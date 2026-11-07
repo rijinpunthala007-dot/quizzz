@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import type { QuizState, RevealSnapshotTeam, CelebrationWording } from '../../types';
 import { DEFAULT_WORDING } from '../../types';
 import { hideWinnersPage, triggerCelebrateAgain } from '../../store';
-import { createRevealSnapshot, getInitials } from '../../utils';
+import { createRevealSnapshot, getInitials, formatScore } from '../../utils';
 import CelebrateConfetti from './CelebrateConfetti';
 import { useFitText } from './useFitText';
 
@@ -508,7 +508,7 @@ function PodiumGridCard({
               : 'text-[92px] text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
           }`}
         >
-          {team.total}
+          {formatScore(team.total)}
         </span>
         <span
           data-testid={`score-pts-${rank}`}

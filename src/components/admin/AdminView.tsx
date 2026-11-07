@@ -1,8 +1,8 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { useQuizState } from '../../store';
 import type { QuizState, RankedTeam, CelebrationWording } from '../../types';
 import { DEFAULT_WORDING } from '../../types';
-import { uid, getTeamTotal, rankTeams, createRevealSnapshot } from '../../utils';
+import { uid, getTeamTotal, rankTeams, createRevealSnapshot, formatScore } from '../../utils';
 import Avatar from '../projector/Avatar';
 
 export default function AdminView() {
@@ -238,7 +238,7 @@ export default function AdminView() {
     setConfirmDialog({
       title: `Eliminate ${toEliminate.length} group(s) after ${level.name}?`,
       message: 'The following groups will be marked as eliminated:',
-      details: toEliminate.map((t) => `${t.name} (Total: ${t.total})`),
+      details: toEliminate.map((t) => `${t.name} (Total: ${formatScore(t.total)})`),
       onConfirm: () => {
         const ids = new Set(toEliminate.map((t) => t.id));
         updateStateImmediate((s) => ({
@@ -252,10 +252,11 @@ export default function AdminView() {
     });
   };
 
-  // --- Scores ---
+  // --- Scores (Supports Decimals, e.g. 10.5, 12.25) ---
   const handleScoreChange = (teamId: string, levelId: string, value: string) => {
-    // If empty string, delete key so input displays blank with placeholder 0
-    if (value.trim() === '') {
+    const trimmed = value.trim();
+    // If empty string or incomplete decimal/minus, remove key so input displays blank with placeholder 0
+    if (trimmed === '' || trimmed === '.' || trimmed === '-') {
       updateStateImmediate((s) => ({
         ...s,
         teams: s.teams.map((t) => {
@@ -267,12 +268,13 @@ export default function AdminView() {
       }));
       return;
     }
-    const num = parseInt(value, 10);
+    const num = parseFloat(trimmed);
     if (isNaN(num)) return;
+    const rounded = Math.round(num * 100) / 100;
     updateStateImmediate((s) => ({
       ...s,
       teams: s.teams.map((t) =>
-        t.id === teamId ? { ...t, scores: { ...t.scores, [levelId]: num } } : t
+        t.id === teamId ? { ...t, scores: { ...t.scores, [levelId]: rounded } } : t
       ),
     }));
   };
@@ -617,7 +619,7 @@ export default function AdminView() {
                       </span>
                       {winnerTeam && (
                         <span className="px-2 py-0.5 rounded-full bg-amber-400 text-indigo-950 font-black text-xs">
-                          Leader: {winnerTeam.name} ({winnerTeam.total} pts)
+                          Leader: {winnerTeam.name} ({formatScore(winnerTeam.total)} pts)
                         </span>
                       )}
                     </div>
@@ -944,19 +946,12 @@ export default function AdminView() {
                           {/* Scores inputs for each level */}
                           {state.levels.map((l, levelIndex) => (
                             <td key={l.id} className={`px-1 text-center ${isCompact ? 'py-1' : 'py-2'}`}>
-                              <input
-                                type="number"
-                                inputMode="decimal"
-                                data-coord={`${teamIndex}-${levelIndex}`}
-                                value={team.scores[l.id] !== undefined ? team.scores[l.id] : ''}
-                                onFocus={(e) => e.target.select()}
+                              <ScoreInputCell
+                                score={team.scores[l.id]}
+                                onChange={(val) => handleScoreChange(team.id, l.id, val)}
                                 onKeyDown={(e) => handleScoreKeyDown(e, teamIndex, levelIndex)}
-                                onChange={(e) => handleScoreChange(team.id, l.id, e.target.value)}
-                                className={`admin-input w-full text-center font-mono font-bold tabular-nums ${
-                                  isCompact ? 'py-1 text-xs' : 'py-1.5 text-sm'
-                                }`}
-                                placeholder="0"
-                                min={0}
+                                coord={`${teamIndex}-${levelIndex}`}
+                                isCompact={isCompact}
                               />
                             </td>
                           ))}
@@ -967,7 +962,7 @@ export default function AdminView() {
                               isCompact ? 'py-1 text-sm' : 'py-2 text-base'
                             }`}
                           >
-                            {team.total}
+                            {formatScore(team.total)}
                           </td>
 
                           {/* Out Checkbox */}
@@ -1401,6 +1396,77 @@ export default function AdminView() {
 
       </main>
     </div>
+  );
+}
+
+interface ScoreInputCellProps {
+  score: number | undefined;
+  onChange: (val: string) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  coord: string;
+  isCompact: boolean;
+}
+
+function ScoreInputCell({
+  score,
+  onChange,
+  onKeyDown,
+  coord,
+  isCompact,
+}: ScoreInputCellProps) {
+  const [text, setText] = useState<string>(score !== undefined ? String(score) : '');
+  const isTypingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isTypingRef.current) {
+      setText(score !== undefined ? String(score) : '');
+    }
+  }, [score]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    // Allow empty, digits, and a single decimal point (e.g. "10", "10.", "10.5", ".5")
+    if (raw === '' || /^-?\d*\.?\d*$/.test(raw)) {
+      isTypingRef.current = true;
+      setText(raw);
+      onChange(raw);
+    }
+  };
+
+  const handleBlur = () => {
+    isTypingRef.current = false;
+    if (text.endsWith('.')) {
+      const trimmed = text.slice(0, -1);
+      setText(trimmed);
+      onChange(trimmed);
+    } else {
+      setText(score !== undefined ? String(score) : '');
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      data-coord={coord}
+      value={text}
+      onFocus={(e) => {
+        isTypingRef.current = true;
+        e.target.select();
+      }}
+      onBlur={handleBlur}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          isTypingRef.current = false;
+        }
+        onKeyDown(e);
+      }}
+      onChange={handleChange}
+      className={`admin-input w-full text-center font-mono font-bold tabular-nums ${
+        isCompact ? 'py-1 text-xs' : 'py-1.5 text-sm'
+      }`}
+      placeholder="0"
+    />
   );
 }
 

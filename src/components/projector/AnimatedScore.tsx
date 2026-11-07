@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { formatScore } from '../../utils';
 
 interface AnimatedScoreProps {
   value: number;
@@ -43,12 +44,18 @@ export default function AnimatedScore({
     const startTime = performance.now();
     let frameId: number;
 
+    const startDecimals = startVal % 1 !== 0 ? (startVal.toString().split('.')[1]?.length || 0) : 0;
+    const endDecimals = endVal % 1 !== 0 ? (endVal.toString().split('.')[1]?.length || 0) : 0;
+    const decimals = Math.min(Math.max(startDecimals, endDecimals), 2);
+    const factor = Math.pow(10, decimals);
+
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
       // Ease out cubic: 1 - (1 - t)^3
       const ease = 1 - Math.pow(1 - progress, 3);
-      const current = Math.round(startVal + (endVal - startVal) * ease);
+      const rawCurrent = startVal + (endVal - startVal) * ease;
+      const current = Math.round(rawCurrent * factor) / factor;
 
       setDisplayValue(current);
 
@@ -69,7 +76,7 @@ export default function AnimatedScore({
 
   return (
     <span className={`tabular-nums ${className}`} style={style}>
-      {displayValue}
+      {formatScore(displayValue)}
     </span>
   );
 }

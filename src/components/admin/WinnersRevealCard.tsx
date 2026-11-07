@@ -11,7 +11,7 @@ import {
   replayRevealCelebration,
   exitReveal,
 } from '../../store';
-import { createRevealSnapshot } from '../../utils';
+import { createRevealSnapshot, formatScore } from '../../utils';
 
 interface WinnersRevealCardProps {
   state: QuizState;
@@ -158,7 +158,7 @@ export default function WinnersRevealCard({ state }: WinnersRevealCardProps) {
                   </div>
                   <div className="text-right shrink-0 pl-2">
                     <span className="font-mono font-bold text-amber-400 text-base">
-                      {team.total}
+                      {formatScore(team.total)}
                     </span>
                     <span className="text-[10px] text-[#9aa7bd] block uppercase">PTS</span>
                   </div>

@@ -78,7 +78,8 @@ export function getMostRecentlyPlayedLevel(levels: Level[], teams: Team[]): Leve
  * Calculate the total score for a team
  */
 export function getTeamTotal(team: { scores: Record<string, number> }, levels: { id: string }[]): number {
-  return levels.reduce((sum, level) => sum + (team.scores[level.id] || 0), 0);
+  const sum = levels.reduce((acc, level) => acc + (team.scores[level.id] || 0), 0);
+  return Math.round(sum * 100) / 100;
 }
 
 /**
@@ -90,7 +91,17 @@ export function getTeamFocusScore(
   levels: { id: string }[]
 ): number {
   if (focus === 'all') return getTeamTotal(team, levels);
-  return team.scores[focus] || 0;
+  const score = team.scores[focus] || 0;
+  return Math.round(score * 100) / 100;
+}
+
+/**
+ * Cleanly format score: integers as integers (e.g. "42"), decimals as decimals up to 2 places (e.g. "42.5", "42.25")
+ */
+export function formatScore(score: number | undefined | null): string {
+  if (score === undefined || score === null || isNaN(score)) return '0';
+  const rounded = Math.round(score * 100) / 100;
+  return rounded.toString();
 }
 
 /**
