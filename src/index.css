@@ -1,0 +1,424 @@
+@import "tailwindcss";
+
+/* === Stitch UI Styles === */
+.banner-ribbon {
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  clip-path: polygon(4% 0%, 96% 0%, 100% 50%, 96% 100%, 4% 100%, 0% 50%);
+}
+
+.curved-sheet {
+  border-top-left-radius: 40px;
+  border-top-right-radius: 40px;
+  background: linear-gradient(180deg, #9993ef 0%, #8b83ea 4%, #7b71e8 14%, #6e63e2 100%);
+  box-shadow: 0 -12px 40px rgba(18, 6, 68, 0.4);
+}
+
+.glow-gold {
+  box-shadow: 0 0 30px rgba(251, 191, 36, 0.55), inset 0 0 14px rgba(251, 191, 36, 0.4);
+}
+.glow-silver {
+  box-shadow: 0 0 22px rgba(216, 225, 240, 0.45), inset 0 0 10px rgba(216, 225, 240, 0.35);
+}
+.glow-bronze {
+  box-shadow: 0 0 22px rgba(245, 166, 99, 0.45), inset 0 0 10px rgba(245, 166, 99, 0.35);
+}
+
+.font-cinzel {
+  font-family: 'Cinzel', serif;
+}
+.font-outfit {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.font-playfair {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+.font-jakarta {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* === Theme custom properties === */
+:root {
+  --ink-bg: #0d0c10;
+  --ink-1: #15131a;
+  --ink-2: #1f1b27;
+  --color-ivory: #F3ECDD;
+  --color-muted: rgba(243, 236, 221, 0.62);
+  --color-gold: #D9B45B;
+  --color-gold-bright: #EBCB7A;
+  --color-silver: #B8BFCC;
+  --color-bronze: #B98A63;
+  --hairline-default: rgba(243, 236, 221, 0.14);
+  --hairline-row: rgba(243, 236, 221, 0.08);
+}
+
+[data-theme='light'] {
+  --ink-bg: #F4EEDF;
+  --ink-1: #EBE4D3;
+  --ink-2: #DFD7C4;
+  --color-ivory: #1B1712;
+  --color-muted: rgba(27, 23, 18, 0.62);
+  --color-gold: #8A6A1F;
+  --color-gold-bright: #7A5C17;
+  --color-silver: #6B7280;
+  --color-bronze: #8C5C38;
+  --hairline-default: rgba(27, 23, 18, 0.18);
+  --hairline-row: rgba(27, 23, 18, 0.10);
+}
+
+@theme {
+  --color-ivory: #F3ECDD;
+  --color-muted: rgba(243, 236, 221, 0.62);
+  --color-gold: #D9B45B;
+  --color-gold-bright: #EBCB7A;
+  --color-navy-dark: #0d0c10;
+  --color-navy-deep: #15131a;
+  --color-surface: #15131a;
+  --color-border: rgba(243, 236, 221, 0.14);
+  --color-second: #B8BFCC;
+  --color-third: #B98A63;
+}
+
+/* === Base styles === */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--ink-bg);
+  color: var(--color-ivory);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular nums helper */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Font family helpers */
+.font-fraunces {
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+}
+
+.font-plex {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.font-playfair {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.font-source-serif {
+  font-family: 'Source Serif 4', Georgia, serif;
+}
+
+.font-inter {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Film grain texture */
+.film-grain {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  z-index: 1;
+}
+
+/* Ribbon badge notch */
+.ribbon-badge {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
+}
+
+/* Standard surface card styling */
+.panel-card-surface {
+  background-color: #111b2e;
+  border: 1px solid #243049;
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* High visibility projector text shadow for numbers */
+.num-shadow {
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65), 0 0 20px rgba(0, 0, 0, 0.4);
+}
+
+.title-shadow {
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(242, 201, 76, 0.15);
+}
+
+/* Hide scrollbars completely on projector stage */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* Subtle scrollbar for admin view */
+.admin-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.admin-scroll::-webkit-scrollbar-track {
+  background: rgba(10, 13, 31, 0.7);
+}
+.admin-scroll::-webkit-scrollbar-thumb {
+  background: rgba(242, 201, 76, 0.3);
+  border-radius: 4px;
+}
+.admin-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(242, 201, 76, 0.6);
+}
+
+/* === Faint background accents (at edges/corners only, 0.025 opacity) === */
+.stained-glass-bg {
+  position: absolute;
+  inset: 0;
+  opacity: 0.025;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(ellipse 90px 220px at 20% 15%, rgba(168, 45, 67, 0.4) 0%, transparent 70%),
+    radial-gradient(ellipse 90px 220px at 50% 10%, rgba(90, 143, 230, 0.4) 0%, transparent 70%),
+    radial-gradient(ellipse 90px 220px at 80% 15%, rgba(91, 196, 138, 0.4) 0%, transparent 70%);
+}
+
+/* === Golden rays (opacity strictly lowered to 0.12, only transform & opacity animated) === */
+.golden-rays {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.12 !important;
+  background:
+    linear-gradient(175deg, rgba(242, 201, 76, 0.08) 0%, transparent 40%),
+    linear-gradient(185deg, rgba(242, 201, 76, 0.06) 0%, transparent 35%),
+    linear-gradient(170deg, rgba(252, 217, 104, 0.05) 0%, transparent 45%);
+  animation: shimmer-rays 20s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes shimmer-rays {
+  0%, 100% {
+    transform: translateX(-1%);
+  }
+  50% {
+    transform: translateX(1%);
+  }
+}
+
+/* === Gold dust particles (pure CSS, max 12, opacity strictly < 0.22, behind content) === */
+.gold-particles-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.gold-particle-item {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fcd968 0%, #f2c94c 60%, transparent 100%);
+  animation: float-particle-css linear infinite;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+@keyframes float-particle-css {
+  0% {
+    transform: translateY(105vh) translateX(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.18;
+  }
+  85% {
+    opacity: 0.12;
+  }
+  100% {
+    transform: translateY(-10vh) translateX(15px);
+    opacity: 0;
+  }
+}
+
+/* === Halo for rank 1: Thin glowing ring with soft bloom === */
+.halo-ring-thin {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(242, 201, 76, 0.9);
+  pointer-events: none;
+  animation: halo-gentle-pulse 4s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+.halo-bloom-static {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(242, 201, 76, 0.35) 0%, rgba(242, 201, 76, 0.08) 50%, transparent 75%);
+  pointer-events: none;
+}
+
+@keyframes halo-gentle-pulse {
+  0%, 100% {
+    opacity: 0.85;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.03);
+  }
+}
+
+/* === Twinkling stars animation for winner card === */
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* === Auto-scrolling marquee for eliminated groups (CSS transform only) === */
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-content {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee-scroll 30s linear infinite;
+  will-change: transform;
+}
+
+/* Pause animations when document is hidden */
+body.is-hidden .golden-rays,
+body.is-hidden .gold-particle-item,
+body.is-hidden .halo-ring-thin,
+body.is-hidden .dove-animation,
+body.is-hidden .marquee-content {
+  animation-play-state: paused !important;
+}
+
+/* === Admin Form Controls === */
+.admin-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(242, 201, 76, 0.25);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: #fff8e7;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.admin-input:focus {
+  border-color: #f2c94c;
+  background-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 1px rgba(242, 201, 76, 0.4);
+}
+
+.admin-input::placeholder {
+  color: rgba(255, 248, 231, 0.3);
+}
+
+.admin-input option {
+  background: #141732;
+  color: #fff8e7;
+}
+
+.admin-btn-gold {
+  background: #f2c94c;
+  color: #0a0d1f;
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.admin-btn-gold:hover {
+  background: #fcd968;
+}
+
+.admin-btn-gold:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.admin-btn-sm {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.375rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.admin-btn-outline {
+  background: transparent;
+  border: 1px solid rgba(242, 201, 76, 0.35);
+  color: #f2c94c;
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.admin-btn-outline:hover {
+  background: rgba(242, 201, 76, 0.15);
+  border-color: #f2c94c;
+}
+
+/* === Reduced motion & lite mode === */
+@media (prefers-reduced-motion: reduce) {
+  .golden-rays,
+  .gold-particle-item,
+  .dove-animation,
+  .halo-ring-thin,
+  .marquee-content {
+    animation: none !important;
+  }
+
+  .gold-particle-item {
+    display: none !important;
+  }
+
+  .golden-rays {
+    opacity: 0.08 !important;
+    transform: none !important;
+  }
+}
+
+.lite-mode .golden-rays,
+.lite-mode .gold-particles-container,
+.lite-mode .dove-animation {
+  display: none !important;
+}
