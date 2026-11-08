@@ -23,7 +23,6 @@ export const DEMO_TEAM_NAMES = new Set([
   'Rock of Ages',
   'Salt & Light',
   'Cornerstone',
-  'The Good Samaritans of Galilee',
   'Royal Priests',
   'Mighty Fortress',
 ]);

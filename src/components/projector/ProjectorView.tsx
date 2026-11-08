@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { useQuizStateReadOnly, setQuizFocus, toggleCelebrateWinner, startReveal } from '../../store';
+import { useQuizStateReadOnly, setQuizFocus, toggleCelebrateWinner } from '../../store';
 import { rankTeams } from '../../utils';
 import BackgroundEffects from './BackgroundEffects';
 import TabBar from './TabBar';
@@ -8,21 +8,106 @@ import RankList from './RankList';
 import BibleVerseFooter from './BibleVerseFooter';
 import EmptyState from './EmptyState';
 import WinnerConfetti from './WinnerConfetti';
-import DevOverflowChecker from './DevOverflowChecker';
 import RevealStage from '../reveal/RevealStage';
 import WinnersCelebrationStage from '../celebrate/WinnersCelebrationStage';
 
-const STAGE_WIDTH = 1920;
-const STAGE_HEIGHT = 1080;
+/**
+ * Single layout function returning fixed px sizes on a 1920-wide stage.
+ * Adapts to any aspect ratio (16:9, 16:10, 4:3) by clamping H between 1080 and 1500,
+ * scaling with transform: scale(windowWidth / 1920) from top-left.
+ */
+export function computeStageLayout(
+  windowWidth: number,
+  windowHeight: number,
+  listTeamsCount: number
+) {
+  // 1. Clamped stage height H between 1080 and 1500
+  const H = Math.min(
+    1500,
+    Math.max(1080, Math.round((1920 * windowHeight) / Math.max(1, windowWidth)))
+  );
+
+  // 2. Scale factor anchored at top-left
+  const scale = windowWidth / 1920;
+
+  // 3. Fixed budget elements (sum = 230px without podium and list panel)
+  const topSpace = 12;
+  const bannerHeight = 100; // Small eyebrow pill ABOVE hexagon LEADERBOARD banner
+  const tabsHeight = 40;
+  const gapTabsPodium = 8;
+  const gapPodiumList = 8;
+  const gapListVerse = 8;
+  const verseBarHeight = 44;
+  const bottomSpace = 10;
+
+  const fixedChromeSum =
+    topSpace +
+    bannerHeight +
+    tabsHeight +
+    gapTabsPodium +
+    gapPodiumList +
+    gapListVerse +
+    verseBarHeight +
+    bottomSpace; // exactly 230px
+
+  const availableForPodiumAndList = H - fixedChromeSum; // At H=1080, this is 850px
+
+  // 4. Column count: <= 7 -> 1 col, 8-14 -> 2 cols, 15-21 -> 3 cols, >= 22 -> 4 cols
+  const numCols =
+    listTeamsCount <= 7 ? 1 : listTeamsCount <= 14 ? 2 : listTeamsCount <= 21 ? 3 : 4;
+  const maxRows = Math.min(
+    7,
+    Math.max(1, listTeamsCount > 0 ? Math.ceil(listTeamsCount / numCols) : 0)
+  );
+
+  // 5. Target list panel budget at H=1080 is 580px
+  // In list panel: header (30px) + padding (12px) + gaps ((maxRows - 1) * 6px) + rows
+  const gapsTotal = maxRows > 1 ? (maxRows - 1) * 6 : 0;
+  const baseAvailableForRows = 580 - 30 - 12 - gapsTotal;
+  const baseRowHeight = Math.min(
+    78,
+    Math.max(48, Math.floor(baseAvailableForRows / Math.max(1, maxRows)))
+  );
+
+  // Extra height beyond 1080 goes to list rows first (up to max 78px), then to podium
+  const extraTotal = H - 1080;
+  const maxRowExpand = 78 - baseRowHeight;
+  const extraForRows = Math.min(extraTotal, maxRowExpand * Math.max(1, maxRows));
+  const rowHeight = baseRowHeight + Math.floor(extraForRows / Math.max(1, maxRows));
+
+  const rowsHeight = maxRows * rowHeight + gapsTotal;
+  const listPanelHeight = 30 + rowsHeight + 12; // header (30px) + rows + 12px padding
+
+  // Remaining height goes to podium!
+  const podiumHeight = availableForPodiumAndList - listPanelHeight;
+
+  return {
+    H,
+    scale,
+    topSpace,
+    bannerHeight,
+    tabsHeight,
+    gapTabsPodium,
+    podiumHeight,
+    gapPodiumList,
+    listPanelHeight,
+    rowHeight,
+    numCols,
+    maxRows,
+    gapListVerse,
+    verseBarHeight,
+    bottomSpace,
+  };
+}
 
 export default function ProjectorView() {
   const state = useQuizStateReadOnly();
   const stageRef = useRef<HTMLDivElement>(null);
 
-  // Responsive scale to fit window exactly
-  const [viewport, setViewport] = useState({
-    width: typeof window !== 'undefined' ? window.innerWidth : STAGE_WIDTH,
-    height: typeof window !== 'undefined' ? window.innerHeight : STAGE_HEIGHT,
+  // Viewport tracking for responsive scaling
+  const [windowDimensions, setWindowDimensions] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1920,
+    height: typeof window !== 'undefined' ? window.innerHeight : 1080,
   });
 
   const isLight = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('theme') === 'light';
@@ -30,17 +115,21 @@ export default function ProjectorView() {
 
   useEffect(() => {
     const handleResize = () => {
-      setViewport({
+      setWindowDimensions({
         width: window.innerWidth,
         height: window.innerHeight,
       });
     };
 
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('fullscreenchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('fullscreenchange', handleResize);
+    };
   }, []);
 
-  // Hide cursor after 3s of inactivity
+  // Hide cursor after 2s of inactivity
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const hide = () => {
@@ -49,11 +138,11 @@ export default function ProjectorView() {
     const show = () => {
       document.body.style.cursor = '';
       clearTimeout(timer);
-      timer = setTimeout(hide, 3000);
+      timer = setTimeout(hide, 2000);
     };
 
     window.addEventListener('mousemove', show);
-    timer = setTimeout(hide, 3000);
+    timer = setTimeout(hide, 2000);
 
     return () => {
       window.removeEventListener('mousemove', show);
@@ -62,13 +151,20 @@ export default function ProjectorView() {
     };
   }, []);
 
-  // Keyboard shortcut: Press 'C' to toggle Winner Celebration
+  // Keyboard shortcuts: F for fullscreen, C for celebrate
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
-      if (e.key === 'c' || e.key === 'C') {
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      } else if (e.key === 'c' || e.key === 'C') {
         toggleCelebrateWinner();
       }
     };
@@ -76,46 +172,76 @@ export default function ProjectorView() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Sync connection status: only show a 12px red dot if connection is lost
+  const [isSyncLost, setIsSyncLost] = useState(false);
+  useEffect(() => {
+    const handleOnline = () => setIsSyncLost(false);
+    const handleOffline = () => setIsSyncLost(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setIsSyncLost(true);
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const hasTeams = state.teams.length > 0;
   const disableAnimation = state.teams.length > 30 || isLite;
 
-  // Rank teams using data model focus and tie handling
+  // Rank teams using focus score and stable tie handling
   const ranked = useMemo(() => {
     return rankTeams(state);
   }, [state]);
 
-  // Scale stage to fit viewport centered
-  const scale = Math.min(
-    viewport.width / STAGE_WIDTH,
-    viewport.height / STAGE_HEIGHT
-  );
+  const activeTeams = useMemo(() => ranked.filter((t) => !t.out), [ranked]);
+  const listTeamsCount = Math.max(0, activeTeams.length - 3);
 
-  const titleUpper = (state.title || 'VERSE UP BIBLE QUIZ 2026').toUpperCase();
+  // Compute exact layout budget
+  const layout = useMemo(() => {
+    return computeStageLayout(
+      windowDimensions.width,
+      windowDimensions.height,
+      listTeamsCount
+    );
+  }, [windowDimensions.width, windowDimensions.height, listTeamsCount]);
+
   const isRevealUrl = typeof window !== 'undefined' && window.location.search.includes('reveal=1');
   const isRevealActive = Boolean(state.reveal?.active) || isRevealUrl;
 
   return (
     <div
+      data-testid="projector-viewport"
       data-theme={isLight ? 'light' : undefined}
-      className="w-screen h-screen overflow-hidden flex items-center justify-center relative select-none bg-[#250f6d] text-white"
+      className="fixed inset-0 w-screen h-screen overflow-hidden select-none bg-[#250f6d] text-white"
+      style={{
+        outline: 'none',
+        userSelect: 'none',
+      }}
     >
       {/* Dynamic Atmospheric Radial Background & Glows */}
       <BackgroundEffects isLight={isLight} />
 
       {/* 
         STAGE:
-        Exactly 1920x1080px, centred, scaled with transform: scale(min(w/1920, h/1080)), overflow hidden.
+        1920px wide, height H (clamped between 1080 and 1500),
+        scaled by scale(windowWidth / 1920) from top-left, edge-to-edge with ZERO scrollbars.
       */}
       <div
         ref={stageRef}
         data-testid="projector-stage"
         style={{
-          width: `${STAGE_WIDTH}px`,
-          height: `${STAGE_HEIGHT}px`,
-          transform: `scale(${scale})`,
-          transformOrigin: 'center center',
+          width: '1920px',
+          height: `${layout.H}px`,
+          transform: `scale(${layout.scale})`,
+          transformOrigin: 'top left',
         }}
-        className="relative z-10 overflow-hidden shrink-0 flex flex-col justify-between"
+        className="relative z-10 overflow-hidden shrink-0 flex flex-col justify-start"
       >
         {state.celebrateWinner ? (
           <WinnersCelebrationStage state={state} />
@@ -123,119 +249,57 @@ export default function ProjectorView() {
           <RevealStage state={state} />
         ) : (
           <>
-            {/* TOP BAR (Stitch Header) */}
-            <header className="w-full h-16 px-12 bg-[#251070]/85 backdrop-blur-xl border-b border-white/10 flex items-center justify-between shrink-0 shadow-md">
-              {/* Left: Book Icon + Brand */}
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-indigo-950 shadow-[0_0_16px_rgba(251,191,36,0.35)] shrink-0">
-                  <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: '"FILL" 1' }}>
-                    menu_book
-                  </span>
-                </div>
-                <div className="flex flex-col leading-none">
-                  <div className="flex items-center gap-2">
-                    <span className="font-outfit text-xl text-white font-black tracking-wide uppercase drop-shadow-sm">
-                      {state.title || 'VERSE UP'}
-                    </span>
-                    <span className="font-outfit text-xs text-indigo-950 bg-amber-400 px-1.5 py-0.5 rounded font-black shadow-sm">
-                      2026
-                    </span>
-                  </div>
-                  <span className="font-outfit text-[11px] text-purple-200 tracking-wider uppercase font-semibold mt-1">
-                    Bible Quiz 2026
-                  </span>
-                </div>
-              </div>
+            {/* 1. TOP SPACE (12px) */}
+            <div style={{ height: `${layout.topSpace}px` }} className="w-full shrink-0" />
 
-              {/* Right: Quiz Championship Badge & Buttons */}
-              <div className="flex items-center gap-3.5">
-                <div className="flex flex-col items-end leading-none">
-                  <div className="flex items-center gap-2">
-                    <span className="font-outfit text-xl text-white font-black tracking-wide uppercase drop-shadow-sm">
-                      VERSE UP
-                    </span>
-                    <span className="font-outfit text-xs text-indigo-950 bg-amber-400 px-1.5 py-0.5 rounded font-black shadow-sm">
-                      2026
-                    </span>
-                  </div>
-                  <span className="font-outfit text-[11px] text-purple-200 tracking-wider uppercase font-semibold mt-1">
-                    Bible Quiz Championship
-                  </span>
-                </div>
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-indigo-950 shadow-[0_0_16px_rgba(251,191,36,0.35)] shrink-0">
-                  <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: '"FILL" 1' }}>
-                    menu_book
-                  </span>
-                </div>
-
-                {/* Winners Reveal Button */}
-                <button
-                  type="button"
-                  onClick={() => startReveal()}
-                  data-testid="projector-reveal-btn"
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-outfit text-xs font-black tracking-wider uppercase transition-all shadow-md cursor-pointer bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-indigo-950 border border-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.35)]"
-                  title="Launch Winners Reveal Ceremony on Projector"
-                >
-                  <span>🏆 Reveal</span>
-                </button>
-
-                {/* Celebrate Winner Button */}
-                <button
-                  type="button"
-                  onClick={() => toggleCelebrateWinner()}
-                  data-testid="projector-celebrate-btn"
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-outfit text-xs font-black tracking-wider uppercase transition-all shadow-md cursor-pointer ${
-                    state.celebrateWinner
-                      ? 'bg-rose-500 hover:bg-rose-600 text-white animate-pulse border border-rose-300'
-                      : 'bg-amber-400 hover:bg-amber-300 text-indigo-950 border border-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.35)]'
-                  }`}
-                  title="Toggle Winner Celebration & Confetti (or press C on keyboard)"
-                >
-                  <span>{state.celebrateWinner ? '🛑 Stop' : '🎉 Celebrate'}</span>
-                </button>
-
-                {/* Open Admin Panel Button */}
-                <a
-                  href="/admin"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  data-testid="open-admin-button"
-                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-amber-400 hover:text-indigo-950 border border-white/20 hover:border-amber-400 text-white font-outfit text-xs font-black tracking-wider uppercase transition-all shadow-md group cursor-pointer ml-1"
-                  title="Open Admin Panel (opens in a new tab)"
-                >
-                  <span className="material-symbols-outlined text-[18px] text-amber-400 group-hover:text-indigo-950 transition-colors">
-                    admin_panel_settings
-                  </span>
-                  <span>Admin Panel</span>
-                  <span className="text-xs opacity-75 group-hover:opacity-100 font-bold">↗</span>
-                </a>
-              </div>
-            </header>
-
-            {/* HERO RIBBON & LEVEL FILTER TABS */}
-            <div className="w-full flex flex-col items-center text-center shrink-0 pt-2 pb-1.5 px-12">
-              {/* Quiz Eyebrow Star Ribbon */}
-              <div className="inline-flex items-center gap-2 px-6 py-1 rounded-full bg-amber-400/20 border border-amber-400/30 text-amber-300 font-outfit text-xs tracking-[0.25em] uppercase font-black drop-shadow shadow-[0_0_16px_rgba(251,191,36,0.35)] mb-1.5">
+            {/* 2. BANNER AREA (100px): Small eyebrow pill ABOVE hexagon LEADERBOARD banner (NOT overlapping text) */}
+            <div
+              style={{ height: `${layout.bannerHeight}px` }}
+              className="w-full flex flex-col items-center justify-center shrink-0 px-12"
+            >
+              {/* Eyebrow Pill ABOVE the banner (height ~28px) */}
+              <div
+                data-testid="projector-title-pill"
+                className="inline-flex items-center gap-2 px-6 py-1 rounded-full bg-amber-400/20 border border-amber-400/30 text-amber-300 font-outfit text-xs tracking-[0.25em] uppercase font-black drop-shadow shadow-[0_0_16px_rgba(251,191,36,0.35)] mb-1.5 shrink-0"
+              >
                 <span className="text-amber-400">★</span>
-                <span>{titleUpper}</span>
+                <span>{(state.title || 'VERSE UP BIBLE QUIZ 2026').toUpperCase()}</span>
                 <span className="text-amber-400">★</span>
               </div>
 
-              {/* Stylized Championship Banner Ribbon */}
-              <div className="relative flex items-center justify-center w-full max-w-xl mb-2">
-                <div className="banner-ribbon px-16 py-2.5 w-full text-center flex flex-col items-center justify-center backdrop-blur-md">
-                  <h1 className="font-cinzel text-3xl md:text-4xl text-white tracking-widest font-black uppercase drop-shadow-md m-0 p-0">
+              {/* Hexagon LEADERBOARD Banner (height ~60px) */}
+              <div className="relative flex items-center justify-center w-full max-w-xl shrink-0">
+                <div
+                  data-testid="projector-leaderboard-banner"
+                  className="banner-ribbon px-16 py-2 w-full text-center flex flex-col items-center justify-center backdrop-blur-md"
+                >
+                  <h1 className="font-cinzel text-3xl md:text-4xl text-white tracking-widest font-black uppercase drop-shadow-md m-0 p-0 leading-tight">
                     LEADERBOARD
                   </h1>
                 </div>
               </div>
-
-              {/* Segmented Filter Bar (Interactive Live Tabs) */}
-              <TabBar levels={state.levels} activeTab={state.focus} onTabChange={setQuizFocus} />
             </div>
 
-            {/* TOP 3 CHAMPIONSHIP PODIUM */}
-            <div className="w-full px-12 flex justify-center shrink-0 pt-3 pb-1.5">
+            {/* 3. TABS ROW (40px) */}
+            <div
+              style={{ height: `${layout.tabsHeight}px` }}
+              className="w-full flex items-center justify-center shrink-0 px-12"
+            >
+              <TabBar
+                levels={state.levels}
+                activeTab={state.focus}
+                onTabChange={(tabId) => setQuizFocus(tabId)}
+              />
+            </div>
+
+            {/* 4. GAP (8px) */}
+            <div style={{ height: `${layout.gapTabsPodium}px` }} className="w-full shrink-0" />
+
+            {/* 5. PODIUM ZONE */}
+            <div
+              style={{ height: `${layout.podiumHeight}px` }}
+              className="w-full px-12 flex items-end justify-center shrink-0 overflow-visible"
+            >
               {!hasTeams ? (
                 <EmptyState />
               ) : (
@@ -246,42 +310,44 @@ export default function ProjectorView() {
                   focus={state.focus}
                   disableAnimation={disableAnimation}
                   isCelebrating={Boolean(state.celebrateWinner)}
+                  podiumHeight={layout.podiumHeight}
                 />
               )}
             </div>
 
-            {/* LOWER STANDINGS (#4+) CURVED SHEET CONTAINER */}
-            <div className="w-full px-8 shrink-0 flex-1 flex flex-col justify-end min-h-0 pt-2">
-              <section className="curved-sheet w-full px-8 pt-5 pb-4 flex flex-col justify-between shadow-2xl overflow-hidden flex-1 min-h-0">
-                {/* List Table */}
-                {!hasTeams ? (
-                  <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center py-6">
-                    <div className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-                      <p className="font-outfit text-white/70 text-sm md:text-base font-semibold tracking-wider uppercase">
-                        Group standings and round totals will appear here live
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <RankList
-                    teams={ranked}
-                    levels={state.levels}
-                    allTeams={state.teams}
-                    focus={state.focus}
-                    disableAnimation={disableAnimation}
-                  />
-                )}
+            {/* 6. GAP (8px) */}
+            <div style={{ height: `${layout.gapPodiumList}px` }} className="w-full shrink-0" />
 
-                {/* Bottom Scripture Box & Status */}
-                <div className="w-full pt-3">
-                  <BibleVerseFooter
-                    teams={ranked}
-                    levels={state.levels}
-                    focus={state.focus}
-                  />
-                </div>
+            {/* 7. TEAM STANDINGS LIST PANEL (pale lavender sheet) */}
+            <div className="w-full px-8 shrink-0 flex flex-col justify-start min-h-0">
+              <section
+                data-testid="rank-list-panel"
+                style={{ height: `${layout.listPanelHeight}px` }}
+                className="curved-sheet w-full px-8 pt-[6px] pb-[6px] flex flex-col justify-start shadow-2xl overflow-hidden shrink-0"
+              >
+                <RankList
+                  teams={ranked}
+                  levels={state.levels}
+                  allTeams={state.teams}
+                  rowHeight={layout.rowHeight}
+                  numCols={layout.numCols}
+                />
               </section>
             </div>
+
+            {/* 8. GAP (8px) */}
+            <div style={{ height: `${layout.gapListVerse}px` }} className="w-full shrink-0" />
+
+            {/* 9. BIBLE VERSE BAR (44px) */}
+            <div
+              style={{ height: `${layout.verseBarHeight}px` }}
+              className="w-full px-8 flex items-center justify-center shrink-0"
+            >
+              <BibleVerseFooter />
+            </div>
+
+            {/* 10. BOTTOM SPACE (10px) */}
+            <div style={{ height: `${layout.bottomSpace}px` }} className="w-full shrink-0" />
 
             {/* Animated Confetti Particles for Winner Celebration */}
             <WinnerConfetti active={Boolean(state.celebrateWinner)} />
@@ -289,8 +355,14 @@ export default function ProjectorView() {
         )}
       </div>
 
-      {/* Dev overflow checker */}
-      <DevOverflowChecker stageRef={stageRef} />
+      {/* Sync lost red dot (12px, bottom right) */}
+      {isSyncLost && (
+        <div
+          data-testid="sync-lost-dot"
+          className="fixed bottom-3 right-3 w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.9)] animate-pulse z-50 pointer-events-none"
+          title="Sync connection lost"
+        />
+      )}
     </div>
   );
 }

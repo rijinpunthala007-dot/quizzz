@@ -1,213 +1,211 @@
-import { memo, useMemo, useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { memo, useMemo } from 'react';
 import type { RankedTeam, Level, Team } from '../../types';
 import Avatar from './Avatar';
 import AnimatedScore from './AnimatedScore';
-import { getRankMovement } from '../../utils';
+import { getRankMovement, formatScore } from '../../utils';
+import { useFitText } from '../celebrate/useFitText';
 
 interface RankListProps {
   teams: RankedTeam[];
   levels: Level[];
-  allTeams?: Team[];
-  focus?: string;
-  disableAnimation?: boolean;
+  allTeams: Team[];
+  rowHeight: number;
+  numCols: number;
 }
 
-const springTransition = {
-  type: 'spring' as const,
-  stiffness: 120,
-  damping: 20,
-};
-
-function formatLevelScores(levels: Level[], team: RankedTeam): string {
-  if (!levels || levels.length === 0) return '';
-  return levels
+function formatPlayedLevelScores(playedLevels: Level[], team: RankedTeam): string {
+  if (!playedLevels || playedLevels.length === 0) return '';
+  return playedLevels
     .map((lvl) => {
       const short = lvl.name.replace(/[^0-9]/g, '') || lvl.name.charAt(0);
       const score = team.scores[lvl.id] ?? 0;
-      return `L${short} ${score}`;
+      return `L${short}: ${formatScore(score)}`;
     })
     .join(' · ');
 }
 
-interface StadiumCardProps {
+// ---------------------------------------------------------------------------
+// Single List Row Component
+// ---------------------------------------------------------------------------
+interface StadiumRowProps {
   team: RankedTeam;
-  levels: Level[];
-  disableAnimation: boolean;
   rowHeight: number;
-  avatarSize: number;
-  nameClass: string;
-  scoreClass: string;
-  ptsClass: string;
-  rankClass: string;
-  subClass: string;
+  allZero: boolean;
+  hideLevelLine: boolean;
+  levelText: string;
+  nameMaxFontSize: number;
+  nameMinFontSize: number;
 }
 
-const StadiumCard = memo(function StadiumCard({
+const StadiumRow = memo(function StadiumRow({
   team,
-  levels,
-  disableAnimation,
   rowHeight,
-  avatarSize,
-  nameClass,
-  scoreClass,
-  ptsClass,
-  rankClass,
-  subClass,
-}: StadiumCardProps) {
+  allZero,
+  hideLevelLine,
+  levelText,
+  nameMaxFontSize,
+  nameMinFontSize,
+}: StadiumRowProps) {
   const movement = getRankMovement(team.rank, team.previousRank);
-  const prevScoreRef = useRef(team.focusScore);
-  const [highlight, setHighlight] = useState(false);
 
-  useEffect(() => {
-    if (prevScoreRef.current !== team.focusScore) {
-      prevScoreRef.current = team.focusScore;
-      setHighlight(true);
-      const timer = setTimeout(() => setHighlight(false), 1200);
-      return () => clearTimeout(timer);
-    }
-  }, [team.focusScore]);
+  // Format badge text: ties as "T-11", all-zero as "—"
+  const badgeText = allZero
+    ? '—'
+    : team.isTied || (team.displayRank && team.displayRank.startsWith('T'))
+    ? (team.displayRank && team.displayRank.startsWith('T') ? team.displayRank : `T-${team.rank}`)
+    : `${team.rank}`;
 
-  const levelText = formatLevelScores(levels, team);
+  // Name fitting: 36px (or 24px in 3-col) down to 26px (or 20px), max 2 lines, no word broken
+  const { containerRef: nameContainerRef, textRef: nameTextRef, style: nameStyle } = useFitText<HTMLHeadingElement>(team.name, {
+    maxFontSize: nameMaxFontSize,
+    minFontSize: nameMinFontSize,
+    maxLines: 2,
+    lineHeight: 1.05,
+    fontFamily: "'Outfit', sans-serif",
+  });
 
   return (
-    <motion.article
-      layout={disableAnimation ? false : 'position'}
-      transition={springTransition}
+    <article
       data-testid={`rank-row-${team.rank}`}
       style={{
         height: `${rowHeight}px`,
-        backgroundColor: highlight ? 'rgba(255, 235, 180, 0.95)' : undefined,
+        padding: '8px 16px',
       }}
-      className="bg-[#dcd7fb]/95 hover:bg-[#e7e3fd] transition-colors rounded-full px-5 flex items-center justify-between shadow-md border border-white/70 shrink-0 w-full overflow-hidden"
+      className="bg-[#dcd7fb]/95 hover:bg-[#e7e3fd] transition-colors rounded-full flex items-center justify-between shadow-md border border-white/70 shrink-0 w-full overflow-hidden select-none"
     >
+      {/* 1. Left: Rank + Avatar + Name Zone & Level Breakdown */}
       <div className="flex items-center gap-3.5 min-w-0 flex-1 mr-3">
-        {/* Rank display with movement indicator */}
-        <div className={`${rankClass} shrink-0 flex items-center justify-center font-outfit text-indigo-950 font-black`}>
-          <span>{team.displayRank || `#${team.rank}`}</span>
+        {/* Rank display (30px, weight 700, dark text; ties as "T-11", all-zero as "—") */}
+        <div
+          data-testid={`rank-badge-${team.rank}`}
+          className="w-[72px] shrink-0 font-outfit text-[30px] font-bold text-indigo-950 tracking-tight leading-none text-center flex items-center justify-center"
+        >
+          <span>{badgeText}</span>
           {movement && movement.isPositive && (
-            <span className="text-emerald-700 ml-1 text-xs" title={`Moved up ${movement.diff}`}>
+            <span className="text-emerald-700 ml-1 text-sm font-bold" title={`Moved up ${movement.diff}`}>
               ▲
             </span>
           )}
           {movement && !movement.isPositive && (
-            <span className="text-rose-600 ml-1 text-xs" title={`Moved down ${movement.diff}`}>
+            <span className="text-rose-600 ml-1 text-sm font-bold" title={`Moved down ${movement.diff}`}>
               ▼
             </span>
           )}
         </div>
 
-        {/* Monogram Avatar with colorful gradient */}
-        <Avatar name={team.name} id={team.id} size={avatarSize} />
+        {/* Monogram Avatar (54px circle with 20px initials) */}
+        <Avatar name={team.name} id={team.id} size={54} fontSize={20} />
 
-        {/* Group Name & Level Breakdown */}
-        <div className="flex flex-col min-w-0 flex-1 leading-tight">
-          <span className={`font-outfit ${nameClass} text-indigo-950 truncate tracking-wide`}>
-            {team.name}
-          </span>
-          {levelText && (
-            <span className={`font-jakarta ${subClass} text-indigo-800/85 font-bold truncate mt-0.5`}>
+        {/* Name Zone & Level Breakdown */}
+        <div className="flex flex-col min-w-0 flex-1 justify-center leading-tight">
+          <div
+            ref={nameContainerRef}
+            data-testid={`row-name-zone-${team.rank}`}
+            className="w-full overflow-hidden flex items-center"
+          >
+            <h3
+              ref={nameTextRef}
+              data-testid={`row-name-text-${team.rank}`}
+              className="font-outfit font-bold text-indigo-950 tracking-wide leading-[1.05]"
+              style={{
+                fontSize: `${nameStyle.fontSize}px`,
+                letterSpacing: nameStyle.letterSpacing,
+                lineHeight: 1.05,
+                wordBreak: 'keep-all',
+                overflowWrap: 'normal',
+                whiteSpace: 'normal',
+                hyphens: 'none',
+              }}
+            >
+              {team.name.split(' ').map((word, wIdx) => (
+                <span
+                  key={wIdx}
+                  data-word="true"
+                  className="inline-block"
+                  style={{ wordBreak: 'keep-all', whiteSpace: 'nowrap' }}
+                >
+                  {word}{wIdx < team.name.split(' ').length - 1 ? '\u00A0' : ''}
+                </span>
+              ))}
+            </h3>
+          </div>
+
+          {/* Level line (22px, only played levels, unambiguous format: L1: 6 · L2: 0 ...) */}
+          {!hideLevelLine && levelText && (
+            <span
+              data-testid={`row-levels-${team.rank}`}
+              className="font-jakarta text-[22px] font-semibold text-indigo-900/85 truncate leading-tight mt-0.5"
+            >
               {levelText}
             </span>
           )}
         </div>
       </div>
 
-      {/* Score */}
-      <div className="flex items-baseline gap-1.5 shrink-0 pl-2">
+      {/* 2. Right: Score (46px, weight 800) + PTS (20px) */}
+      <div data-testid={`row-score-zone-${team.rank}`} className="flex items-baseline gap-1.5 shrink-0 pl-2">
         <AnimatedScore
           value={team.focusScore}
-          className={`font-outfit ${scoreClass} text-indigo-950 tabular-nums drop-shadow-sm`}
+          className="font-outfit text-[46px] font-extrabold text-indigo-950 tabular-nums drop-shadow-sm leading-none"
         />
-        <span className={`font-outfit ${ptsClass} text-indigo-800/80 tracking-wider uppercase`}>
+        <span className="font-outfit text-[20px] font-bold text-indigo-800/80 tracking-wider uppercase leading-none">
           PTS
         </span>
       </div>
-    </motion.article>
+    </article>
   );
 });
 
+// ---------------------------------------------------------------------------
+// Main RankList Component
+// ---------------------------------------------------------------------------
 const RankList = memo(function RankList({
   teams,
   levels,
-  disableAnimation = false,
+  allTeams,
+  rowHeight,
+  numCols,
 }: RankListProps) {
-  // Only display active teams after the top 3 podium teams (all teams from index 3 onward)
+  // Only display active teams after top 3 podium teams (ranks 4+)
   const listTeams = useMemo(() => {
     const active = teams.filter((t) => !t.out);
     return active.slice(3);
   }, [teams]);
 
-  // Split into 2 columns evenly
-  const { leftCol, rightCol } = useMemo(() => {
-    if (listTeams.length === 0) return { leftCol: [], rightCol: [] };
-    const mid = Math.ceil(listTeams.length / 2);
-    return {
-      leftCol: listTeams.slice(0, mid),
-      rightCol: listTeams.slice(mid),
-    };
-  }, [listTeams]);
+  // Are all active groups at 0 points?
+  const allZero = useMemo(() => {
+    return teams.filter((t) => !t.out).every((t) => (t.focusScore || 0) === 0);
+  }, [teams]);
 
-  // Dynamic row sizing & typography scale based on row count to properly fill the stage
-  const maxRows = Math.max(leftCol.length, rightCol.length, 1);
+  // Played levels: at least one group has a non-zero score in that level, at most last 4
+  const playedLevels = useMemo(() => {
+    return levels
+      .filter((lvl) => allTeams.some((t) => (t.scores[lvl.id] ?? 0) !== 0))
+      .slice(-4);
+  }, [levels, allTeams]);
 
-  const { rowHeight, gap, avatarSize, nameClass, scoreClass, ptsClass, rankClass, subClass } = useMemo(() => {
-    if (maxRows <= 4) {
-      return {
-        rowHeight: 74,
-        gap: 16,
-        avatarSize: 50,
-        nameClass: 'text-xl md:text-[22px] font-black',
-        scoreClass: 'text-3xl md:text-4xl font-black',
-        ptsClass: 'text-xs md:text-sm font-black',
-        rankClass: 'w-10 text-lg md:text-xl font-black',
-        subClass: 'text-xs md:text-sm font-semibold',
-      };
+  // If 3 columns (15 to 21 groups): names shrink to 24px and level line is hidden
+  const hideLevelLine = numCols >= 3;
+  const nameMaxFontSize = numCols >= 3 ? 24 : 36;
+  const nameMinFontSize = numCols >= 3 ? 20 : 26;
+
+  // Split list teams into columns, filled DOWN first (exactly 7 rows per column)
+  const columns = useMemo(() => {
+    const cols: RankedTeam[][] = [];
+    for (let c = 0; c < numCols; c++) {
+      cols.push(listTeams.slice(c * 7, (c + 1) * 7));
     }
-    if (maxRows <= 6) {
-      return {
-        rowHeight: 58,
-        gap: 10,
-        avatarSize: 42,
-        nameClass: 'text-lg font-extrabold',
-        scoreClass: 'text-2xl font-black',
-        ptsClass: 'text-[11px] font-bold',
-        rankClass: 'w-9 text-base font-black',
-        subClass: 'text-xs font-semibold',
-      };
-    }
-    if (maxRows <= 8) {
-      return {
-        rowHeight: 44,
-        gap: 6,
-        avatarSize: 32,
-        nameClass: 'text-sm font-extrabold',
-        scoreClass: 'text-xl font-black',
-        ptsClass: 'text-[10px] font-bold',
-        rankClass: 'w-8 text-sm font-black',
-        subClass: 'text-[10px] font-medium',
-      };
-    }
-    return {
-      rowHeight: 36,
-      gap: 4,
-      avatarSize: 26,
-      nameClass: 'text-xs font-bold',
-      scoreClass: 'text-base font-black',
-      ptsClass: 'text-[9px] font-bold',
-      rankClass: 'w-7 text-xs font-black',
-      subClass: 'text-[9px] font-medium',
-    };
-  }, [maxRows]);
+    return cols;
+  }, [listTeams, numCols]);
 
   return (
     <div
       data-testid="rank-list-container"
-      className="w-full flex-1 flex flex-col justify-between overflow-hidden min-h-0"
+      className="w-full h-full flex flex-col justify-start overflow-hidden min-h-0"
     >
-      {/* Standings Header Strip */}
-      <div className="flex items-center justify-between px-4 pb-2.5 text-white shrink-0">
-        <div className="flex items-center gap-2.5">
+      {/* 1. Slim Header Strip (30px): "TEAM STANDINGS" 22px left, "TOTAL PTS" 22px right */}
+      <div className="w-full h-[30px] flex items-center justify-between px-3 text-white shrink-0">
+        <div className="flex items-center gap-2">
           <svg
             className="w-4 h-4 text-amber-300"
             fill="none"
@@ -221,65 +219,49 @@ const RankList = memo(function RankList({
               strokeLinejoin="round"
             />
           </svg>
-          <span className="font-outfit text-base text-white font-extrabold uppercase tracking-wider drop-shadow-sm">
+          <span className="font-outfit text-[22px] text-white font-extrabold uppercase tracking-wider leading-none">
             TEAM STANDINGS
           </span>
         </div>
-        <div className="flex items-center gap-4 text-white/90 font-outfit text-xs uppercase tracking-widest font-bold">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-white/70" />
-            Contenders
-          </span>
-          <span className="font-bold tracking-widest text-white/90">TOTAL PTS</span>
+        <div className="text-white/90 font-outfit text-[22px] uppercase tracking-wider font-extrabold leading-none">
+          TOTAL PTS
         </div>
       </div>
 
-      {/* 2-Column Grid of Stadium Cards */}
+      {/* 2. Columns of Stadium Pill Rows sharing width equally with 16px gutter */}
       {listTeams.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center min-h-[120px] text-center">
-          <p className="font-outfit text-white/50 text-sm font-semibold tracking-wider uppercase">
+        <div className="w-full flex-1 flex items-center justify-center text-center">
+          <p className="font-outfit text-white/70 text-base font-bold tracking-wider uppercase">
             All active groups are currently on the championship podium
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-x-8 w-full flex-1 items-start min-h-0 overflow-hidden">
-          {/* Left Column */}
-          <div className="flex flex-col min-w-0" style={{ gap: `${gap}px` }}>
-            {leftCol.map((team) => (
-              <StadiumCard
-                key={team.id}
-                team={team}
-                levels={levels}
-                disableAnimation={disableAnimation}
-                rowHeight={rowHeight}
-                avatarSize={avatarSize}
-                nameClass={nameClass}
-                scoreClass={scoreClass}
-                ptsClass={ptsClass}
-                rankClass={rankClass}
-                subClass={subClass}
-              />
-            ))}
-          </div>
-
-          {/* Right Column */}
-          <div className="flex flex-col min-w-0" style={{ gap: `${gap}px` }}>
-            {rightCol.map((team) => (
-              <StadiumCard
-                key={team.id}
-                team={team}
-                levels={levels}
-                disableAnimation={disableAnimation}
-                rowHeight={rowHeight}
-                avatarSize={avatarSize}
-                nameClass={nameClass}
-                scoreClass={scoreClass}
-                ptsClass={ptsClass}
-                rankClass={rankClass}
-                subClass={subClass}
-              />
-            ))}
-          </div>
+        <div
+          className="w-full flex-1 flex items-start gap-x-4 pt-[6px] overflow-hidden min-h-0"
+        >
+          {columns.map((colTeams, colIdx) => (
+            <div
+              key={colIdx}
+              data-testid={`rank-list-col-${colIdx}`}
+              className="flex-1 flex flex-col gap-[6px] min-w-0 h-full"
+            >
+              {colTeams.map((team) => {
+                const levelText = formatPlayedLevelScores(playedLevels, team);
+                return (
+                  <StadiumRow
+                    key={team.id}
+                    team={team}
+                    rowHeight={rowHeight}
+                    allZero={allZero}
+                    hideLevelLine={hideLevelLine}
+                    levelText={levelText}
+                    nameMaxFontSize={nameMaxFontSize}
+                    nameMinFontSize={nameMinFontSize}
+                  />
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
     </div>

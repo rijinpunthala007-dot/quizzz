@@ -5,6 +5,7 @@ interface AvatarProps {
   name: string;
   id?: string;
   size?: number; // 36, 44, or custom
+  fontSize?: number;
   rank?: number;
   ringColor?: string;
   className?: string;
@@ -36,10 +37,21 @@ function getGradient(name: string): string {
 const Avatar = memo(function Avatar({
   name,
   size = 36,
+  fontSize,
   className = '',
 }: AvatarProps) {
   const initials = getInitials(name);
   const gradient = getGradient(name);
+
+  const computedFontSize = fontSize
+    ? `${fontSize}px`
+    : size >= 50
+    ? '20px'
+    : size <= 32
+    ? '11px'
+    : size <= 40
+    ? '13px'
+    : '15px';
 
   return (
     <div
@@ -47,7 +59,7 @@ const Avatar = memo(function Avatar({
       style={{
         width: `${size}px`,
         height: `${size}px`,
-        fontSize: size <= 32 ? '11px' : size <= 40 ? '13px' : '15px',
+        fontSize: computedFontSize,
         lineHeight: 1,
         letterSpacing: '0.02em',
       }}

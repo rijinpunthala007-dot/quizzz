@@ -11,6 +11,7 @@ interface PodiumProps {
   focus?: string;
   disableAnimation?: boolean;
   isCelebrating?: boolean;
+  podiumHeight?: number;
 }
 
 const springTransition = {
@@ -35,6 +36,7 @@ const Podium = memo(function Podium({
   levels,
   disableAnimation = false,
   isCelebrating = false,
+  podiumHeight,
 }: PodiumProps) {
   // Extract top 3 active teams by ranking order
   const activeTeams = useMemo(() => teams.filter((t) => !t.out), [teams]);
@@ -52,7 +54,8 @@ const Podium = memo(function Podium({
   return (
     <div
       data-testid="podium-container"
-      className="w-full h-[305px] max-h-[305px] flex items-end justify-center select-none overflow-visible relative gap-10"
+      style={{ height: podiumHeight ? `${podiumHeight}px` : undefined }}
+      className="w-full h-[270px] flex items-end justify-center select-none overflow-visible relative gap-10"
     >
       {columns.map(({ team, slotRank, position }) => {
         if (!team) {

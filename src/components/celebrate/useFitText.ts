@@ -8,7 +8,7 @@ interface UseFitTextOptions {
   fontFamily?: string;
 }
 
-export function useFitText(text: string, options: UseFitTextOptions) {
+export function useFitText<T extends HTMLElement = HTMLElement>(text: string, options: UseFitTextOptions) {
   const {
     maxFontSize,
     minFontSize,
@@ -17,7 +17,7 @@ export function useFitText(text: string, options: UseFitTextOptions) {
   } = options;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLHeadingElement | HTMLSpanElement>(null);
+  const textRef = useRef<T>(null);
 
   const [style, setStyle] = useState<{ fontSize: number; letterSpacing: string }>({
     fontSize: maxFontSize,
