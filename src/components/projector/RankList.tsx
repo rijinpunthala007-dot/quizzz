@@ -3,7 +3,7 @@ import type { RankedTeam, Level, Team } from '../../types';
 import Avatar from './Avatar';
 import AnimatedScore from './AnimatedScore';
 import { getRankMovement, formatScore } from '../../utils';
-import { useFitText } from '../celebrate/useFitText';
+import { useRowNameFit } from './useRowNameFit';
 
 interface RankListProps {
   teams: RankedTeam[];
@@ -33,8 +33,7 @@ interface StadiumRowProps {
   allZero: boolean;
   hideLevelLine: boolean;
   levelText: string;
-  nameMaxFontSize: number;
-  nameMinFontSize: number;
+  baseNameSize: number;
 }
 
 const StadiumRow = memo(function StadiumRow({
@@ -43,8 +42,7 @@ const StadiumRow = memo(function StadiumRow({
   allZero,
   hideLevelLine,
   levelText,
-  nameMaxFontSize,
-  nameMinFontSize,
+  baseNameSize,
 }: StadiumRowProps) {
   const movement = getRankMovement(team.rank, team.previousRank);
 
@@ -55,13 +53,14 @@ const StadiumRow = memo(function StadiumRow({
     ? (team.displayRank && team.displayRank.startsWith('T') ? team.displayRank : `T-${team.rank}`)
     : `${team.rank}`;
 
-  // Name fitting: 36px (or 24px in 3-col) down to 26px (or 20px), max 2 lines, no word broken
-  const { containerRef: nameContainerRef, textRef: nameTextRef, style: nameStyle } = useFitText<HTMLHeadingElement>(team.name, {
-    maxFontSize: nameMaxFontSize,
-    minFontSize: nameMinFontSize,
-    maxLines: 2,
+  const hasLevelLine = !hideLevelLine && Boolean(levelText);
+
+  // Name fitting: 1 line first, then 2 lines if needed
+  const { containerRef: nameContainerRef, textRef: nameTextRef, style: nameStyle } = useRowNameFit(team.name, {
+    baseNameSize,
+    rowHeight,
+    hasLevelLine,
     lineHeight: 1.05,
-    fontFamily: "'Outfit', sans-serif",
   });
 
   return (
@@ -69,81 +68,94 @@ const StadiumRow = memo(function StadiumRow({
       data-testid={`rank-row-${team.rank}`}
       style={{
         height: `${rowHeight}px`,
-        padding: '8px 16px',
+        padding: '6px 16px',
+        gap: '12px',
       }}
-      className="bg-[#dcd7fb]/95 hover:bg-[#e7e3fd] transition-colors rounded-full flex items-center justify-between shadow-md border border-white/70 shrink-0 w-full overflow-hidden select-none"
+      className="bg-[#dcd7fb]/95 hover:bg-[#e7e3fd] transition-colors rounded-full flex items-center shadow-md border border-white/70 shrink-0 w-full overflow-hidden select-none"
     >
-      {/* 1. Left: Rank + Avatar + Name Zone & Level Breakdown */}
-      <div className="flex items-center gap-3.5 min-w-0 flex-1 mr-3">
-        {/* Rank display (30px, weight 700, dark text; ties as "T-11", all-zero as "—") */}
-        <div
-          data-testid={`rank-badge-${team.rank}`}
-          className="w-[72px] shrink-0 font-outfit text-[30px] font-bold text-indigo-950 tracking-tight leading-none text-center flex items-center justify-center"
-        >
-          <span>{badgeText}</span>
-          {movement && movement.isPositive && (
-            <span className="text-emerald-700 ml-1 text-sm font-bold" title={`Moved up ${movement.diff}`}>
-              ▲
-            </span>
-          )}
-          {movement && !movement.isPositive && (
-            <span className="text-rose-600 ml-1 text-sm font-bold" title={`Moved down ${movement.diff}`}>
-              ▼
-            </span>
-          )}
-        </div>
-
-        {/* Monogram Avatar (54px circle with 20px initials) */}
-        <Avatar name={team.name} id={team.id} size={54} fontSize={20} />
-
-        {/* Name Zone & Level Breakdown */}
-        <div className="flex flex-col min-w-0 flex-1 justify-center leading-tight">
-          <div
-            ref={nameContainerRef}
-            data-testid={`row-name-zone-${team.rank}`}
-            className="w-full overflow-hidden flex items-center"
-          >
-            <h3
-              ref={nameTextRef}
-              data-testid={`row-name-text-${team.rank}`}
-              className="font-outfit font-bold text-indigo-950 tracking-wide leading-[1.05]"
-              style={{
-                fontSize: `${nameStyle.fontSize}px`,
-                letterSpacing: nameStyle.letterSpacing,
-                lineHeight: 1.05,
-                wordBreak: 'keep-all',
-                overflowWrap: 'normal',
-                whiteSpace: 'normal',
-                hyphens: 'none',
-              }}
-            >
-              {team.name.split(' ').map((word, wIdx) => (
-                <span
-                  key={wIdx}
-                  data-word="true"
-                  className="inline-block"
-                  style={{ wordBreak: 'keep-all', whiteSpace: 'nowrap' }}
-                >
-                  {word}{wIdx < team.name.split(' ').length - 1 ? '\u00A0' : ''}
-                </span>
-              ))}
-            </h3>
-          </div>
-
-          {/* Level line (22px, only played levels, unambiguous format: L1: 6 · L2: 0 ...) */}
-          {!hideLevelLine && levelText && (
-            <span
-              data-testid={`row-levels-${team.rank}`}
-              className="font-jakarta text-[22px] font-semibold text-indigo-900/85 truncate leading-tight mt-0.5"
-            >
-              {levelText}
-            </span>
-          )}
-        </div>
+      {/* 1. Rank: fixed width (72px) */}
+      <div
+        data-testid={`rank-badge-${team.rank}`}
+        className="w-[72px] shrink-0 font-outfit text-[30px] font-bold text-indigo-950 tracking-tight leading-none text-center flex items-center justify-center"
+      >
+        <span>{badgeText}</span>
       </div>
 
-      {/* 2. Right: Score (46px, weight 800) + PTS (20px) */}
-      <div data-testid={`row-score-zone-${team.rank}`} className="flex items-baseline gap-1.5 shrink-0 pl-2">
+      {/* 2. Avatar: fixed (54px) */}
+      <Avatar name={team.name} id={team.id} size={54} fontSize={20} />
+
+      {/* 3. NAME BLOCK: flex: 1 1 0%, minWidth: 0, takes ALL the remaining width */}
+      <div
+        data-testid={`row-name-block-${team.rank}`}
+        className="flex flex-col justify-center leading-tight overflow-hidden"
+        style={{ flex: '1 1 0%', minWidth: 0 }}
+      >
+        <div
+          ref={nameContainerRef}
+          data-testid={`row-name-zone-${team.rank}`}
+          className="w-full overflow-hidden flex items-center"
+        >
+          <h3
+            ref={nameTextRef}
+            data-testid={`row-name-text-${team.rank}`}
+            className="font-outfit font-bold text-indigo-950 tracking-wide"
+            style={{
+              fontSize: `${nameStyle.fontSize}px`,
+              letterSpacing: nameStyle.letterSpacing,
+              lineHeight: 1.05,
+              wordBreak: 'keep-all',
+              overflowWrap: 'normal',
+              whiteSpace: nameStyle.isSingleLine ? 'nowrap' : 'normal',
+              hyphens: 'none',
+            }}
+          >
+            {team.name.split(' ').map((word, wIdx, arr) => (
+              <span key={wIdx}>
+                <span
+                  data-word="true"
+                  style={{
+                    display: 'inline-block',
+                    whiteSpace: 'nowrap',
+                    wordBreak: 'keep-all',
+                    overflowWrap: 'normal',
+                    hyphens: 'none',
+                  }}
+                >
+                  {word}
+                </span>
+                {wIdx < arr.length - 1 ? ' ' : ''}
+              </span>
+            ))}
+          </h3>
+        </div>
+
+        {/* Level line (22px, only played levels, unambiguous format: L1: 6 · L2: 0 ...) */}
+        {hasLevelLine && (
+          <span
+            data-testid={`row-levels-${team.rank}`}
+            className="font-jakarta text-[22px] font-semibold text-indigo-900/85 truncate leading-tight mt-0.5"
+          >
+            {levelText}
+          </span>
+        )}
+      </div>
+
+      {/* 4. Score + PTS: width: auto, flex: 0 0 auto, only as wide as its content */}
+      <div
+        data-testid={`row-score-zone-${team.rank}`}
+        className="flex items-baseline gap-1.5 shrink-0 pl-1"
+        style={{ flex: '0 0 auto', width: 'auto' }}
+      >
+        {movement && movement.isPositive && (
+          <span className="text-emerald-700 font-bold text-sm mr-1" title={`Moved up ${movement.diff}`}>
+            ▲
+          </span>
+        )}
+        {movement && !movement.isPositive && (
+          <span className="text-rose-600 font-bold text-sm mr-1" title={`Moved down ${movement.diff}`}>
+            ▼
+          </span>
+        )}
         <AnimatedScore
           value={team.focusScore}
           className="font-outfit text-[46px] font-extrabold text-indigo-950 tabular-nums drop-shadow-sm leading-none"
@@ -186,8 +198,7 @@ const RankList = memo(function RankList({
 
   // If 3 columns (15 to 21 groups): names shrink to 24px and level line is hidden
   const hideLevelLine = numCols >= 3;
-  const nameMaxFontSize = numCols >= 3 ? 24 : 36;
-  const nameMinFontSize = numCols >= 3 ? 20 : 26;
+  const baseNameSize = numCols >= 3 ? 24 : 36;
 
   // Split list teams into columns, filled DOWN first (exactly 7 rows per column)
   const columns = useMemo(() => {
@@ -255,8 +266,7 @@ const RankList = memo(function RankList({
                     allZero={allZero}
                     hideLevelLine={hideLevelLine}
                     levelText={levelText}
-                    nameMaxFontSize={nameMaxFontSize}
-                    nameMinFontSize={nameMinFontSize}
+                    baseNameSize={baseNameSize}
                   />
                 );
               })}

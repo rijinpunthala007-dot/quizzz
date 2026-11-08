@@ -201,3 +201,4 @@ runSelfCheck().catch((err) => {
   console.error('\n*** SELF-CHECK FAILED ***\n', err);
   process.exit(1);
 });
+
