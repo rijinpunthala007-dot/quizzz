@@ -12,102 +12,34 @@ import RevealStage from '../reveal/RevealStage';
 import WinnersCelebrationStage from '../celebrate/WinnersCelebrationStage';
 
 /**
- * Single layout function returning fixed px sizes on a 1920-wide stage.
- * Adapts to any aspect ratio (16:9, 16:10, 4:3) by clamping H between 1080 and 1500,
- * scaling with transform: scale(windowWidth / 1920) from top-left.
+ * FIXED 1920x1080 stage layout with zero aspect-ratio dependency.
+ * Sum of all vertical heights: 6 + 84 + 4 + 44 + 12 + 310 + 8 + 554 + 8 + 44 + 6 = 1080px.
  */
-export function computeStageLayout(
-  windowWidth: number,
-  windowHeight: number,
-  listTeamsCount: number
-) {
-  // 1. Clamped stage height H between 1080 and 1500
-  const H = Math.min(
-    1500,
-    Math.max(1080, Math.round((1920 * windowHeight) / Math.max(1, windowWidth)))
-  );
-
-  // 2. Scale factor anchored at top-left
-  const scale = windowWidth / 1920;
-
-  // 3. Fixed budget elements (sum = 230px without podium and list panel)
-  const topSpace = 12;
-  const bannerHeight = 100; // Small eyebrow pill ABOVE hexagon LEADERBOARD banner
-  const tabsHeight = 40;
-  const gapTabsPodium = 8;
-  const gapPodiumList = 8;
-  const gapListVerse = 8;
-  const verseBarHeight = 44;
-  const bottomSpace = 10;
-
-  const fixedChromeSum =
-    topSpace +
-    bannerHeight +
-    tabsHeight +
-    gapTabsPodium +
-    gapPodiumList +
-    gapListVerse +
-    verseBarHeight +
-    bottomSpace; // exactly 230px
-
-  const availableForPodiumAndList = H - fixedChromeSum; // At H=1080, this is 850px
-
-  // 4. Column count: <= 7 -> 1 col, 8-14 -> 2 cols, 15-21 -> 3 cols, >= 22 -> 4 cols
-  const numCols =
-    listTeamsCount <= 7 ? 1 : listTeamsCount <= 14 ? 2 : listTeamsCount <= 21 ? 3 : 4;
-  const maxRows = Math.min(
-    7,
-    Math.max(1, listTeamsCount > 0 ? Math.ceil(listTeamsCount / numCols) : 0)
-  );
-
-  // 5. Target list panel budget at H=1080 is 580px
-  // In list panel: header (30px) + padding (12px) + gaps ((maxRows - 1) * 6px) + rows
-  const gapsTotal = maxRows > 1 ? (maxRows - 1) * 6 : 0;
-  const baseAvailableForRows = 580 - 30 - 12 - gapsTotal;
-  const baseRowHeight = Math.min(
-    78,
-    Math.max(48, Math.floor(baseAvailableForRows / Math.max(1, maxRows)))
-  );
-
-  // Extra height beyond 1080 goes to list rows first (up to max 78px), then to podium
-  const extraTotal = H - 1080;
-  const maxRowExpand = 78 - baseRowHeight;
-  const extraForRows = Math.min(extraTotal, maxRowExpand * Math.max(1, maxRows));
-  const rowHeight = baseRowHeight + Math.floor(extraForRows / Math.max(1, maxRows));
-
-  const rowsHeight = maxRows * rowHeight + gapsTotal;
-  const listPanelHeight = 30 + rowsHeight + 12; // header (30px) + rows + 12px padding
-
-  // Remaining height goes to podium!
-  const podiumHeight = availableForPodiumAndList - listPanelHeight;
-
-  return {
-    H,
-    scale,
-    topSpace,
-    bannerHeight,
-    tabsHeight,
-    gapTabsPodium,
-    podiumHeight,
-    gapPodiumList,
-    listPanelHeight,
-    rowHeight,
-    numCols,
-    maxRows,
-    gapListVerse,
-    verseBarHeight,
-    bottomSpace,
-  };
-}
+export const PROJECTOR_LAYOUT = {
+  stageWidth: 1920,
+  stageHeight: 1080,
+  topSpace: 6,
+  bannerHeight: 84,
+  gapBannerTabs: 4,
+  tabsHeight: 44,      // Reserved 44px row
+  gapTabsPodium: 12,    // Reserved 12px gap above podium
+  podiumHeight: 310,    // Podium zone strictly contains cards and #1 pill
+  gapPodiumList: 8,
+  listPanelHeight: 554, // Header 30px + pad 12px + 6 gaps*6px (36px) + 7 rows*68px (476px) = 554px
+  rowHeight: 68,
+  gapListVerse: 8,      // 8px gap between list panel and verse bar
+  verseBarHeight: 44,   // 44px verse bar
+  bottomSpace: 6,
+} as const;
 
 export default function ProjectorView() {
   const state = useQuizStateReadOnly();
   const stageRef = useRef<HTMLDivElement>(null);
 
   // Viewport tracking for responsive scaling
-  const [windowDimensions, setWindowDimensions] = useState({
-    width: typeof window !== 'undefined' ? window.innerWidth : 1920,
-    height: typeof window !== 'undefined' ? window.innerHeight : 1080,
+  const [viewport, setViewport] = useState({
+    width: typeof window !== 'undefined' ? (window.visualViewport?.width || window.innerWidth || 1920) : 1920,
+    height: typeof window !== 'undefined' ? (window.visualViewport?.height || window.innerHeight || 1080) : 1080,
   });
 
   const isLight = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('theme') === 'light';
@@ -115,17 +47,37 @@ export default function ProjectorView() {
 
   useEffect(() => {
     const handleResize = () => {
-      setWindowDimensions({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
+      const w = window.visualViewport?.width || window.innerWidth || 1920;
+      const h = window.visualViewport?.height || window.innerHeight || 1080;
+      setViewport({ width: w, height: h });
     };
 
     window.addEventListener('resize', handleResize);
     window.addEventListener('fullscreenchange', handleResize);
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+    }
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && document.documentElement) {
+      ro = new ResizeObserver(() => {
+        handleResize();
+      });
+      ro.observe(document.documentElement);
+    }
+
+    handleResize();
+
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('fullscreenchange', handleResize);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+      }
+      if (ro) {
+        ro.disconnect();
+      }
     };
   }, []);
 
@@ -202,14 +154,15 @@ export default function ProjectorView() {
   const activeTeams = useMemo(() => ranked.filter((t) => !t.out), [ranked]);
   const listTeamsCount = Math.max(0, activeTeams.length - 3);
 
-  // Compute exact layout budget
-  const layout = useMemo(() => {
-    return computeStageLayout(
-      windowDimensions.width,
-      windowDimensions.height,
-      listTeamsCount
-    );
-  }, [windowDimensions.width, windowDimensions.height, listTeamsCount]);
+  // Column count: <= 7 -> 1 col, 8-14 -> 2 cols, 15-21 -> 3 cols, >= 22 -> 4 cols
+  const numCols =
+    listTeamsCount <= 7 ? 1 : listTeamsCount <= 14 ? 2 : listTeamsCount <= 21 ? 3 : 4;
+
+  // Uniform scale factor, centered on screen
+  const scale = Math.min(
+    viewport.width / PROJECTOR_LAYOUT.stageWidth,
+    viewport.height / PROJECTOR_LAYOUT.stageHeight
+  );
 
   const isRevealUrl = typeof window !== 'undefined' && window.location.search.includes('reveal=1');
   const isRevealActive = Boolean(state.reveal?.active) || isRevealUrl;
@@ -224,24 +177,27 @@ export default function ProjectorView() {
         userSelect: 'none',
       }}
     >
-      {/* Dynamic Atmospheric Radial Background & Glows */}
+      {/* Dynamic Atmospheric Radial Background & Glows across entire window */}
       <BackgroundEffects isLight={isLight} />
 
       {/* 
-        STAGE:
-        1920px wide, height H (clamped between 1080 and 1500),
-        scaled by scale(windowWidth / 1920) from top-left, edge-to-edge with ZERO scrollbars.
+        FIXED 1920x1080 STAGE:
+        One layout, one set of px values, scaled uniformly with Math.min(w/1920, h/1080),
+        centered horizontally and vertically in the viewport with matching background bars.
       */}
       <div
         ref={stageRef}
         data-testid="projector-stage"
         style={{
-          width: '1920px',
-          height: `${layout.H}px`,
-          transform: `scale(${layout.scale})`,
-          transformOrigin: 'top left',
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          width: `${PROJECTOR_LAYOUT.stageWidth}px`,
+          height: `${PROJECTOR_LAYOUT.stageHeight}px`,
+          transform: `translate(-50%, -50%) scale(${scale})`,
+          transformOrigin: 'center center',
         }}
-        className="relative z-10 overflow-hidden shrink-0 flex flex-col justify-start"
+        className="z-10 overflow-hidden shrink-0 flex flex-col justify-start"
       >
         {state.celebrateWinner ? (
           <WinnersCelebrationStage state={state} />
@@ -249,29 +205,29 @@ export default function ProjectorView() {
           <RevealStage state={state} />
         ) : (
           <>
-            {/* 1. TOP SPACE (12px) */}
-            <div style={{ height: `${layout.topSpace}px` }} className="w-full shrink-0" />
+            {/* 1. TOP SPACE (6px) */}
+            <div style={{ height: `${PROJECTOR_LAYOUT.topSpace}px` }} className="w-full shrink-0" />
 
-            {/* 2. BANNER AREA (100px): Small eyebrow pill ABOVE hexagon LEADERBOARD banner (NOT overlapping text) */}
+            {/* 2. BANNER AREA (84px): Eyebrow pill ABOVE hexagon LEADERBOARD banner */}
             <div
-              style={{ height: `${layout.bannerHeight}px` }}
+              style={{ height: `${PROJECTOR_LAYOUT.bannerHeight}px` }}
               className="w-full flex flex-col items-center justify-center shrink-0 px-12"
             >
-              {/* Eyebrow Pill ABOVE the banner (height ~28px) */}
+              {/* Eyebrow Pill ABOVE the banner (height ~26px) */}
               <div
                 data-testid="projector-title-pill"
-                className="inline-flex items-center gap-2 px-6 py-1 rounded-full bg-amber-400/20 border border-amber-400/30 text-amber-300 font-outfit text-xs tracking-[0.25em] uppercase font-black drop-shadow shadow-[0_0_16px_rgba(251,191,36,0.35)] mb-1.5 shrink-0"
+                className="inline-flex items-center gap-2 px-6 py-1 rounded-full bg-amber-400/20 border border-amber-400/30 text-amber-300 font-outfit text-xs tracking-[0.25em] uppercase font-black drop-shadow shadow-[0_0_16px_rgba(251,191,36,0.35)] mb-1 shrink-0"
               >
                 <span className="text-amber-400">★</span>
                 <span>{(state.title || 'VERSE UP BIBLE QUIZ 2026').toUpperCase()}</span>
                 <span className="text-amber-400">★</span>
               </div>
 
-              {/* Hexagon LEADERBOARD Banner (height ~60px) */}
+              {/* Hexagon LEADERBOARD Banner (height ~52px) */}
               <div className="relative flex items-center justify-center w-full max-w-xl shrink-0">
                 <div
                   data-testid="projector-leaderboard-banner"
-                  className="banner-ribbon px-16 py-2 w-full text-center flex flex-col items-center justify-center backdrop-blur-md"
+                  className="banner-ribbon px-16 py-1.5 w-full text-center flex flex-col items-center justify-center backdrop-blur-md"
                 >
                   <h1 className="font-cinzel text-3xl md:text-4xl text-white tracking-widest font-black uppercase drop-shadow-md m-0 p-0 leading-tight">
                     LEADERBOARD
@@ -280,9 +236,12 @@ export default function ProjectorView() {
               </div>
             </div>
 
-            {/* 3. TABS ROW (40px) */}
+            {/* 3. GAP (4px) */}
+            <div style={{ height: `${PROJECTOR_LAYOUT.gapBannerTabs}px` }} className="w-full shrink-0" />
+
+            {/* 4. TABS ROW (44px reserved row, fully visible) */}
             <div
-              style={{ height: `${layout.tabsHeight}px` }}
+              style={{ height: `${PROJECTOR_LAYOUT.tabsHeight}px` }}
               className="w-full flex items-center justify-center shrink-0 px-12"
             >
               <TabBar
@@ -292,12 +251,12 @@ export default function ProjectorView() {
               />
             </div>
 
-            {/* 4. GAP (8px) */}
-            <div style={{ height: `${layout.gapTabsPodium}px` }} className="w-full shrink-0" />
+            {/* 5. GAP ABOVE PODIUM (12px) */}
+            <div style={{ height: `${PROJECTOR_LAYOUT.gapTabsPodium}px` }} className="w-full shrink-0" />
 
-            {/* 5. PODIUM ZONE */}
+            {/* 6. PODIUM ZONE (310px) */}
             <div
-              style={{ height: `${layout.podiumHeight}px` }}
+              style={{ height: `${PROJECTOR_LAYOUT.podiumHeight}px` }}
               className="w-full px-12 flex items-end justify-center shrink-0 overflow-visible"
             >
               {!hasTeams ? (
@@ -310,44 +269,44 @@ export default function ProjectorView() {
                   focus={state.focus}
                   disableAnimation={disableAnimation}
                   isCelebrating={Boolean(state.celebrateWinner)}
-                  podiumHeight={layout.podiumHeight}
+                  podiumHeight={PROJECTOR_LAYOUT.podiumHeight}
                 />
               )}
             </div>
 
-            {/* 6. GAP (8px) */}
-            <div style={{ height: `${layout.gapPodiumList}px` }} className="w-full shrink-0" />
+            {/* 7. GAP (8px) */}
+            <div style={{ height: `${PROJECTOR_LAYOUT.gapPodiumList}px` }} className="w-full shrink-0" />
 
-            {/* 7. TEAM STANDINGS LIST PANEL (pale lavender sheet) */}
+            {/* 8. TEAM STANDINGS LIST PANEL (554px) */}
             <div className="w-full px-8 shrink-0 flex flex-col justify-start min-h-0">
               <section
                 data-testid="rank-list-panel"
-                style={{ height: `${layout.listPanelHeight}px` }}
+                style={{ height: `${PROJECTOR_LAYOUT.listPanelHeight}px` }}
                 className="curved-sheet w-full px-8 pt-[6px] pb-[6px] flex flex-col justify-start shadow-2xl overflow-hidden shrink-0"
               >
                 <RankList
                   teams={ranked}
                   levels={state.levels}
                   allTeams={state.teams}
-                  rowHeight={layout.rowHeight}
-                  numCols={layout.numCols}
+                  rowHeight={PROJECTOR_LAYOUT.rowHeight}
+                  numCols={numCols}
                 />
               </section>
             </div>
 
-            {/* 8. GAP (8px) */}
-            <div style={{ height: `${layout.gapListVerse}px` }} className="w-full shrink-0" />
+            {/* 9. GAP (8px) */}
+            <div style={{ height: `${PROJECTOR_LAYOUT.gapListVerse}px` }} className="w-full shrink-0" />
 
-            {/* 9. BIBLE VERSE BAR (44px) */}
+            {/* 10. BIBLE VERSE BAR (44px) */}
             <div
-              style={{ height: `${layout.verseBarHeight}px` }}
+              style={{ height: `${PROJECTOR_LAYOUT.verseBarHeight}px` }}
               className="w-full px-8 flex items-center justify-center shrink-0"
             >
               <BibleVerseFooter />
             </div>
 
-            {/* 10. BOTTOM SPACE (10px) */}
-            <div style={{ height: `${layout.bottomSpace}px` }} className="w-full shrink-0" />
+            {/* 11. BOTTOM SPACE (6px) */}
+            <div style={{ height: `${PROJECTOR_LAYOUT.bottomSpace}px` }} className="w-full shrink-0" />
 
             {/* Animated Confetti Particles for Winner Celebration */}
             <WinnerConfetti active={Boolean(state.celebrateWinner)} />

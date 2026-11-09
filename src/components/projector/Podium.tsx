@@ -55,14 +55,14 @@ const Podium = memo(function Podium({
     <div
       data-testid="podium-container"
       style={{ height: podiumHeight ? `${podiumHeight}px` : undefined }}
-      className="w-full h-[270px] flex items-end justify-center select-none overflow-visible relative gap-10"
+      className="w-full h-[310px] flex items-end justify-center select-none overflow-visible relative gap-10"
     >
       {columns.map(({ team, slotRank, position }) => {
         if (!team) {
           return (
             <div
               key={position}
-              className={`h-[275px] shrink-0 ${slotRank === 1 ? 'w-[470px]' : 'w-[400px]'}`}
+              className={`shrink-0 ${slotRank === 1 ? 'w-[470px] h-[295px]' : 'w-[400px] h-[265px]'}`}
             />
           );
         }
@@ -84,7 +84,7 @@ const Podium = memo(function Podium({
               layout={disableAnimation ? false : 'position'}
               transition={springTransition}
               data-testid={`podium-card-${slotRank}`}
-              className={`relative flex flex-col items-center justify-between w-[470px] h-[305px] shrink-0 bg-gradient-to-b from-[#3d1da9]/95 via-[#2e1388]/95 to-[#250d75]/98 rounded-3xl px-6 pt-5 pb-3.5 z-20 transition-all ${
+              className={`relative flex flex-col items-center justify-between w-[470px] h-[295px] shrink-0 bg-gradient-to-b from-[#3d1da9]/95 via-[#2e1388]/95 to-[#250d75]/98 rounded-3xl px-6 pt-4 pb-3.5 z-20 transition-all ${
                 isCelebrating
                   ? 'border-4 border-amber-300 shadow-[0_0_80px_rgba(251,191,36,0.85)] scale-105'
                   : 'border-2 border-amber-400/70 shadow-[0_20px_50px_rgba(251,191,36,0.4)]'
@@ -92,7 +92,7 @@ const Podium = memo(function Podium({
             >
               {/* Crown Floating Pill */}
               <div
-                className={`absolute -top-4 px-5 py-1.5 rounded-full text-indigo-950 font-outfit text-xs flex items-center gap-2 font-black tracking-widest uppercase transition-all ${
+                className={`absolute -top-3.5 px-5 py-1.5 rounded-full text-indigo-950 font-outfit text-xs flex items-center gap-2 font-black tracking-widest uppercase transition-all ${
                   isCelebrating
                     ? 'bg-gradient-to-r from-yellow-300 via-amber-200 to-yellow-400 shadow-[0_0_30px_rgba(251,191,36,0.9)] animate-bounce'
                     : 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 shadow-[0_0_24px_rgba(251,191,36,0.6)]'
@@ -227,7 +227,7 @@ const Podium = memo(function Podium({
             layout={disableAnimation ? false : 'position'}
             transition={springTransition}
             data-testid={`podium-card-${slotRank}`}
-            className="relative flex flex-col items-center justify-between w-[400px] h-[275px] shrink-0 bg-[#281577]/65 border border-white/20 backdrop-blur-md rounded-3xl px-5 pt-4 pb-3 shadow-xl hover:-translate-y-1 transition-transform"
+            className="relative flex flex-col items-center justify-between w-[400px] h-[265px] shrink-0 bg-[#281577]/65 border border-white/20 backdrop-blur-md rounded-3xl px-5 pt-3.5 pb-3 shadow-xl hover:-translate-y-1 transition-transform"
           >
             {/* Top Rank Badge */}
             <div

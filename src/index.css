@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* === Global viewport styling === */
+html, body {
+  overflow: hidden;
+  margin: 0;
+  height: 100%;
+}
+
 /* === Stitch UI Styles === */
 .banner-ribbon {
   position: relative;
