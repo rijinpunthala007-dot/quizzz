@@ -9,6 +9,7 @@ interface BibleVerseFooterProps {
 }
 
 const BIBLE_VERSES = [
+  { text: '“DESIGNED AND DEVELOPED BY”', ref: 'RJ' },
   { text: '“I can do all things through Christ which strengtheneth me.”', ref: 'Philippians 4:13' },
   { text: '“Thy word is a lamp unto my feet, and a light unto my path.”', ref: 'Psalm 119:105' },
   { text: '“Trust in the LORD with all your heart, and lean not on your own understanding.”', ref: 'Proverbs 3:5' },
@@ -29,6 +30,7 @@ const BibleVerseFooter = memo(function BibleVerseFooter(_props: BibleVerseFooter
   }, []);
 
   const currentVerse = BIBLE_VERSES[verseIndex];
+  const isCredit = currentVerse.ref === 'RJ';
 
   return (
     <div
@@ -50,7 +52,11 @@ const BibleVerseFooter = memo(function BibleVerseFooter(_props: BibleVerseFooter
           >
             {currentVerse.text}
           </p>
-          <span className="font-outfit text-[20px] font-black text-amber-400 tracking-wider uppercase shrink-0 leading-none">
+          <span
+            className={`font-outfit font-black text-amber-400 tracking-wider uppercase shrink-0 leading-none ${
+              isCredit ? 'text-[26px]' : 'text-[20px]'
+            }`}
+          >
             — {currentVerse.ref} —
           </span>
         </motion.div>

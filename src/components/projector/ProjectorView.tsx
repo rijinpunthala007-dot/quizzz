@@ -4,6 +4,8 @@ import { rankTeams } from '../../utils';
 import BackgroundEffects from './BackgroundEffects';
 import TabBar from './TabBar';
 import Podium from './Podium';
+import PodiumV2 from './PodiumV2';
+import AmbientFX from './AmbientFX';
 import RankList from './RankList';
 import BibleVerseFooter from './BibleVerseFooter';
 import EmptyState from './EmptyState';
@@ -44,6 +46,8 @@ export default function ProjectorView() {
 
   const isLight = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('theme') === 'light';
   const isLite = typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('lite') === '1' || state.teams.length > 30);
+  const isClassicPodium = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('podium') === 'classic';
+  const ActivePodium = isClassicPodium ? Podium : PodiumV2;
 
   useEffect(() => {
     const handleResize = () => {
@@ -199,6 +203,7 @@ export default function ProjectorView() {
         }}
         className="z-10 overflow-hidden shrink-0 flex flex-col justify-start"
       >
+        <AmbientFX leaderId={ranked[0]?.id} levelId={state.focus} />
         {state.celebrateWinner ? (
           <WinnersCelebrationStage state={state} />
         ) : isRevealActive ? (
@@ -262,7 +267,7 @@ export default function ProjectorView() {
               {!hasTeams ? (
                 <EmptyState />
               ) : (
-                <Podium
+                <ActivePodium
                   teams={ranked}
                   levels={state.levels}
                   allTeams={state.teams}

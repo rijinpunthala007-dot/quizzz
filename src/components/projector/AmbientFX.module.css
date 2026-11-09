@@ -1,0 +1,249 @@
+/* AmbientFX.module.css - Scoped spiritual ambience layer */
+
+.ambientRoot {
+  --fx-gold-1: #FFE27A;
+  --fx-gold-2: #F5C542;
+  --fx-ivory: #FFFBEB;
+  --fx-lavender: #E9D5FF;
+
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* A. Light Rays (Soft & Full): 5 soft rays from top center, mask fades out by 60% of page height */
+.raysLayer {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1600px;
+  height: 1100px;
+  pointer-events: none;
+  z-index: 1;
+
+  /* 5 soft rays via conic-gradient centered at top center */
+  background: conic-gradient(
+    from 148deg at 50% 0%,
+    transparent 0deg,
+    rgba(245, 197, 66, 0.11) 10deg,
+    rgba(255, 226, 122, 0.14) 14deg,
+    transparent 18deg,
+    rgba(245, 197, 66, 0.10) 25deg,
+    rgba(255, 251, 235, 0.13) 29deg,
+    transparent 33deg,
+    rgba(255, 226, 122, 0.14) 40deg,
+    rgba(245, 197, 66, 0.12) 44deg,
+    transparent 48deg,
+    rgba(245, 197, 66, 0.10) 55deg,
+    rgba(255, 226, 122, 0.13) 59deg,
+    transparent 63deg,
+    rgba(245, 197, 66, 0.11) 70deg,
+    transparent 74deg
+  );
+
+  /* Mask fades out by 60% of stage height */
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.8) 35%, rgba(0, 0, 0, 0) 60%);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.8) 35%, rgba(0, 0, 0, 0) 60%);
+
+  animation: fxRayPulse 9s ease-in-out infinite alternate, fxRaySway 24s ease-in-out infinite alternate;
+}
+
+@keyframes fxRayPulse {
+  0% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1.0;
+  }
+}
+
+@keyframes fxRaySway {
+  0% {
+    transform: translateX(-50%) rotate(-1.5deg);
+  }
+  100% {
+    transform: translateX(-50%) rotate(1.5deg);
+  }
+}
+
+/* B. Rising Light Motes (Soft: 8, Full: 16) */
+.motesLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.moteGold {
+  position: absolute;
+  left: var(--fx-x);
+  bottom: -20px;
+  width: var(--fx-size);
+  height: var(--fx-size);
+  border-radius: 50%;
+  background: radial-gradient(circle, #FFE27A 20%, rgba(245, 197, 66, 0.6) 50%, rgba(255, 226, 122, 0) 100%);
+  animation: fxMoteRise var(--fx-duration) ease-in-out infinite;
+  animation-delay: var(--fx-delay);
+  opacity: 0;
+}
+
+.moteIvory {
+  position: absolute;
+  left: var(--fx-x);
+  bottom: -20px;
+  width: var(--fx-size);
+  height: var(--fx-size);
+  border-radius: 50%;
+  background: radial-gradient(circle, #FFFBEB 25%, rgba(254, 243, 199, 0.65) 55%, rgba(255, 255, 255, 0) 100%);
+  animation: fxMoteRise var(--fx-duration) ease-in-out infinite;
+  animation-delay: var(--fx-delay);
+  opacity: 0;
+}
+
+@keyframes fxMoteRise {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.7;
+  }
+  35% {
+    transform: translateY(-380px) translateX(var(--fx-sway));
+  }
+  50% {
+    opacity: 0.6;
+  }
+  70% {
+    transform: translateY(-750px) translateX(calc(var(--fx-sway) * -0.75));
+  }
+  88% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: translateY(-1120px) translateX(var(--fx-sway));
+    opacity: 0;
+  }
+}
+
+/* D. Dove on New Leader */
+.doveFlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 90px;
+  height: 60px;
+  pointer-events: none;
+  z-index: 30;
+  animation: fxDoveFlight 5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes fxDoveFlight {
+  0% {
+    transform: translate(-120px, 150px) rotate(8deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  48% {
+    transform: translate(960px, 75px) rotate(0deg);
+    opacity: 0.95;
+  }
+  88% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(2040px, 140px) rotate(-6deg);
+    opacity: 0;
+  }
+}
+
+.doveTrail {
+  position: absolute;
+  right: 40px;
+  top: 24px;
+  width: 140px;
+  height: 12px;
+  border-radius: 9999px;
+  background: linear-gradient(to left, rgba(255, 226, 122, 0.6) 0%, rgba(245, 197, 66, 0.25) 50%, transparent 100%);
+  pointer-events: none;
+}
+
+.doveSvg {
+  width: 70px;
+  height: 48px;
+  filter: drop-shadow(0 2px 8px rgba(245, 197, 66, 0.5));
+  animation: fxDoveWing 0.4s ease-in-out infinite alternate;
+  transform-origin: center center;
+}
+
+@keyframes fxDoveWing {
+  0% {
+    transform: scaleY(1);
+  }
+  100% {
+    transform: scaleY(0.7);
+  }
+}
+
+/* E. Stained-Glass Arches (Full Only) */
+.archLeft {
+  position: absolute;
+  left: 36px;
+  top: 135px;
+  width: 180px;
+  height: 330px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.07;
+  animation: fxArchPulse 12s ease-in-out infinite alternate;
+}
+
+.archRight {
+  position: absolute;
+  right: 36px;
+  top: 135px;
+  width: 180px;
+  height: 330px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.07;
+  animation: fxArchPulse 12s ease-in-out infinite alternate;
+  transform: scaleX(-1);
+}
+
+@keyframes fxArchPulse {
+  0% {
+    opacity: 0.055;
+  }
+  100% {
+    opacity: 0.08;
+  }
+}
+
+/* Reduced Motion and Hidden Overrides */
+@media (prefers-reduced-motion: reduce) {
+  .raysLayer,
+  .moteGold,
+  .moteIvory,
+  .doveFlight,
+  .doveSvg,
+  .archLeft,
+  .archRight {
+    animation: none !important;
+  }
+  .doveFlight {
+    display: none !important;
+  }
+}
+
+.ambientRoot[data-hidden="true"] * {
+  animation-play-state: paused !important;
+}
+
