@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, useEffect, useRef } from 'react';
+import { memo, useMemo, useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { RankedTeam, Level, Team } from '../../types';
 import type { ProjectorLayout } from './layout';
@@ -32,115 +32,147 @@ const WINNER_STARS = [
   { top: 180, right: -18, size: 15, delay: '1.7s', duration: '2.0s' },
 ];
 
+interface FitPodiumCardNameResult {
+  fontSize: number;
+  scale: number;
+}
+
 /**
  * Custom text fitting hook for team names on podium cards.
  * Max 2 lines (line-height 1.05), words never split, never ellipsis.
  * Binary search 1 line first, then 2 lines.
+ * If still does not fit at minSize, scale down with transform (origin center).
+ * Never let text overflow upward or downward out of its zone.
  */
 function useFitPodiumCardName(
   name: string,
   maxSize: number,
   minSize: number,
-  containerRef: React.RefObject<HTMLDivElement | null>
-) {
-  const [fontSize, setFontSize] = useState(maxSize);
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  textRef: React.RefObject<HTMLHeadingElement | null>,
+  layoutHeight?: number
+): FitPodiumCardNameResult {
+  const [result, setResult] = useState<FitPodiumCardNameResult>({
+    fontSize: maxSize,
+    scale: 1,
+  });
 
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+  const fit = useCallback(() => {
+    const container = containerRef.current;
+    const el = textRef.current;
+    if (!container || !el || !name) return;
 
-    const measureAndFit = () => {
-      const availWidth = el.clientWidth || (maxSize >= 44 ? 434 : 368);
-      const availHeight = el.clientHeight || (maxSize >= 44 ? 64 : 60);
-      if (availWidth <= 0 || availHeight <= 0) return;
+    const computed = window.getComputedStyle(container);
+    const padLeft = parseFloat(computed.paddingLeft) || 0;
+    const padRight = parseFloat(computed.paddingRight) || 0;
+    const padTop = parseFloat(computed.paddingTop) || 0;
+    const padBottom = parseFloat(computed.paddingBottom) || 0;
 
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+    const availWidth = Math.max(1, (maxSize >= 44 ? 434 : 368));
+    const availHeight = Math.max(1, (container.clientHeight || (maxSize >= 44 ? 64 : 60)) - padTop - padBottom);
+    const maxContainerWidth = Math.max(availWidth, container.clientWidth - padLeft - padRight);
 
-      const words = name.trim().split(/\s+/);
+    el.style.wordBreak = 'keep-all';
+    el.style.overflowWrap = 'normal';
+    el.style.hyphens = 'none';
+    el.style.lineHeight = '1.05';
+    el.style.whiteSpace = 'normal';
+    el.style.transform = '';
 
-      // Check 1 line fit
-      const checkOneLine = (size: number): boolean => {
-        ctx.font = `bold ${size}px 'Cinzel', serif`;
-        const textWidth = ctx.measureText(name).width;
-        return textWidth <= availWidth && size * 1.05 <= availHeight;
-      };
-
-      // Check 2 lines fit (never splitting words)
-      const checkTwoLines = (size: number): boolean => {
-        if (size * 1.05 * 2 > availHeight) return false;
-        ctx.font = `bold ${size}px 'Cinzel', serif`;
-        if (words.length <= 1) {
-          return ctx.measureText(name).width <= availWidth;
-        }
-        for (let i = 1; i < words.length; i++) {
-          const line1 = words.slice(0, i).join(' ');
-          const line2 = words.slice(i).join(' ');
-          if (
-            ctx.measureText(line1).width <= availWidth &&
-            ctx.measureText(line2).width <= availWidth
-          ) {
-            return true;
-          }
-        }
-        return false;
-      };
-
-      // 1. Try 1 line first
-      let low = minSize;
-      let high = maxSize;
-      let best1 = -1;
-      while (low <= high) {
-        const mid = Math.floor((low + high) / 2);
-        if (checkOneLine(mid)) {
-          best1 = mid;
-          low = mid + 1;
-        } else {
-          high = mid - 1;
-        }
-      }
-
-      if (best1 >= minSize) {
-        setFontSize(best1);
-        return;
-      }
-
-      // 2. Try 2 lines
-      low = minSize;
-      high = Math.min(maxSize, Math.floor(availHeight / 2.1));
-      let best2 = minSize;
-      while (low <= high) {
-        const mid = Math.floor((low + high) / 2);
-        if (checkTwoLines(mid)) {
-          best2 = mid;
-          low = mid + 1;
-        } else {
-          high = mid - 1;
-        }
-      }
-
-      setFontSize(best2);
+    // Check canvas 1-line check like baseline
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const checkOneLineCanvas = (size: number): boolean => {
+      if (!ctx) return false;
+      ctx.font = `bold ${size}px 'Cinzel', serif`;
+      const textWidth = ctx.measureText(name).width;
+      return textWidth <= availWidth && size * 1.05 <= availHeight;
     };
 
-    measureAndFit();
+    let low = minSize;
+    let high = maxSize;
+    let best1 = -1;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      if (checkOneLineCanvas(mid)) {
+        best1 = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    // Verify DOM: does best1 fit within availHeight in DOM?
+    if (best1 >= minSize) {
+      el.style.fontSize = `${best1}px`;
+      if (el.scrollHeight <= availHeight + 1 && el.scrollWidth <= (container.clientWidth || availWidth) + 1) {
+        setResult({ fontSize: best1, scale: 1 });
+        return;
+      }
+    }
+
+    // If best1 caused wrapping that overflows availHeight (e.g. Psycho Simon at 1024x768),
+    // binary search down in DOM so that BOTH scrollHeight <= availHeight and scrollWidth <= maxContainerWidth!
+    low = minSize;
+    high = best1 > minSize ? best1 - 1 : maxSize;
+    let bestDOM = -1;
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      el.style.fontSize = `${mid}px`;
+      if (el.scrollHeight <= availHeight + 1 && el.scrollWidth <= maxContainerWidth + 1) {
+        bestDOM = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    if (bestDOM >= minSize) {
+      el.style.fontSize = `${bestDOM}px`;
+      setResult({ fontSize: bestDOM, scale: 1 });
+      return;
+    }
+
+    // If still does not fit at minSize: scale down with transform
+    el.style.fontSize = `${minSize}px`;
+    const sW = maxContainerWidth / Math.max(1, el.scrollWidth);
+    const sH = availHeight / Math.max(1, el.scrollHeight);
+    const scale = Math.min(1, sW, sH);
+
+    setResult({ fontSize: minSize, scale });
+  }, [name, maxSize, minSize, containerRef, textRef]);
+
+  useLayoutEffect(() => {
+    fit();
+
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      document.fonts.ready.then(fit);
+    }
+
+    const container = containerRef.current;
+    if (!container) return;
 
     let ro: ResizeObserver | null = null;
     if (typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(() => measureAndFit());
-      ro.observe(el);
+      ro = new ResizeObserver(fit);
+      ro.observe(container);
     }
 
-    if (document.fonts?.ready) {
-      document.fonts.ready.then(measureAndFit);
-    }
+    const handleWindowChange = () => fit();
+    window.addEventListener('resize', handleWindowChange);
+    window.addEventListener('fullscreenchange', handleWindowChange);
+    window.addEventListener('orientationchange', handleWindowChange);
 
     return () => {
       if (ro) ro.disconnect();
+      window.removeEventListener('resize', handleWindowChange);
+      window.removeEventListener('fullscreenchange', handleWindowChange);
+      window.removeEventListener('orientationchange', handleWindowChange);
     };
-  }, [name, maxSize, minSize, containerRef]);
+  }, [fit, layoutHeight]);
 
-  return fontSize;
+  return result;
 }
 
 /**
@@ -340,13 +372,16 @@ const PodiumCard = memo(function PodiumCard({
 
   // Name fitting: 1st place: max 48px, min 26px; 2nd/3rd: max 38px, min 22px
   const nameContainerRef = useRef<HTMLDivElement>(null);
+  const nameTextRef = useRef<HTMLHeadingElement>(null);
   const maxNameSize = Math.floor((isWinner ? 48 : 38) * s);
   const minNameSize = Math.floor((isWinner ? 26 : 22) * s);
-  const nameFontSize = useFitPodiumCardName(
+  const { fontSize: nameFontSize, scale: nameScale } = useFitPodiumCardName(
     team.name,
     maxNameSize,
     minNameSize,
-    nameContainerRef
+    nameContainerRef,
+    nameTextRef,
+    layout?.stageHeight
   );
 
   // Score fitting: 1st place: max 64px; 2nd/3rd: max 52px; shrink to 70% if wide
@@ -542,6 +577,7 @@ const PodiumCard = memo(function PodiumCard({
           className={isWinner ? styles.nameRowFirst : styles.nameRowSecondThird}
         >
           <h2
+            ref={nameTextRef}
             style={{
               fontSize: `${nameFontSize}px`,
               lineHeight: 1.05,
@@ -549,6 +585,10 @@ const PodiumCard = memo(function PodiumCard({
               overflowWrap: 'normal',
               hyphens: 'none',
               whiteSpace: 'normal',
+              transform: nameScale < 1 ? `scale(${nameScale})` : undefined,
+              transformOrigin: 'center center',
+              margin: 0,
+              padding: 0,
             }}
             className="font-cinzel text-white font-bold tracking-wide text-center drop-shadow"
           >

@@ -32,16 +32,6 @@ const springTransition = {
   damping: 20,
 };
 
-function formatPlayedLevelScores(playedLevels: Level[], team: RankedTeam): string {
-  if (!playedLevels || playedLevels.length === 0) return '';
-  return playedLevels
-    .map((lvl) => {
-      const short = lvl.name.replace(/[^0-9]/g, '') || lvl.name.charAt(0);
-      const score = team.scores[lvl.id] ?? 0;
-      return `L${short}: ${formatScore(score)}`;
-    })
-    .join(' · ');
-}
 
 // ---------------------------------------------------------------------------
 // List Animated Score (Count-Up with tabular nums, 700ms roll, decimals supported)
@@ -132,12 +122,32 @@ const ListScoreRoll = memo(function ListScoreRoll({
 // ---------------------------------------------------------------------------
 // Single List Row Component
 // ---------------------------------------------------------------------------
+function formatPlayedLevelScores(playedLevels: Level[], team: RankedTeam): string {
+  if (!playedLevels || playedLevels.length === 0) return '';
+  return playedLevels
+    .map((lvl) => {
+      const short = lvl.name.replace(/[^0-9]/g, '') || lvl.name.charAt(0);
+      const score = team.scores[lvl.id] ?? 0;
+      return `L${short}: ${formatScore(score)}`;
+    })
+    .join(' · ');
+}
+
+export interface LevelScoreItem {
+  id: string;
+  short: string;
+  score: number;
+  isActive: boolean;
+}
+
 interface StadiumRowProps {
   team: RankedTeam;
   rowHeight: number;
   allZero: boolean;
   hideLevelLine: boolean;
-  levelText: string;
+  levelItems?: LevelScoreItem[];
+  levelText?: string;
+  isOverall?: boolean;
   baseNameSize: number;
   animationEvent?: RowAnimationEvent;
   disableAnimation: boolean;
@@ -150,7 +160,9 @@ const StadiumRow = memo(function StadiumRow({
   rowHeight,
   allZero,
   hideLevelLine,
+  levelItems,
   levelText,
+  isOverall,
   baseNameSize,
   animationEvent,
   disableAnimation,
@@ -160,14 +172,15 @@ const StadiumRow = memo(function StadiumRow({
   const movement = getRankMovement(team.rank, team.previousRank);
   const s = layout?.s ?? 1;
 
-  // Format badge text: ties as "T-11", all-zero as "—"
-  const badgeText = allZero
+  // Format badge text: ties as "T-11", all-zero or zero score as "—"
+  const isZeroScore = allZero || (team.focusScore || 0) === 0;
+  const badgeText = isZeroScore
     ? '—'
     : team.isTied || (team.displayRank && team.displayRank.startsWith('T'))
     ? (team.displayRank && team.displayRank.startsWith('T') ? team.displayRank : `T-${team.rank}`)
     : `${team.rank}`;
 
-  const hasLevelLine = !hideLevelLine && Boolean(levelText);
+  const hasLevelLine = !hideLevelLine && (isOverall ? Boolean(levelText) : Boolean(levelItems && levelItems.length > 0));
 
   // Name fitting: 1 line first, then 2 lines if needed
   const { containerRef: nameContainerRef, textRef: nameTextRef, style: nameStyle } = useRowNameFit(team.name, {
@@ -311,15 +324,46 @@ const StadiumRow = memo(function StadiumRow({
           </h3>
         </div>
 
-        {/* Level line (22px, only played levels, unambiguous format: L1: 6 · L2: 0 ...) */}
+        {/* Level line: identical single text string on Overall tab, structured & highlighted on Level tabs */}
         {hasLevelLine && (
-          <span
-            data-testid={`row-levels-${team.rank}`}
-            style={{ fontSize: `${levelFontSize}px` }}
-            className="font-jakarta font-semibold text-indigo-900/85 truncate leading-tight mt-0.5"
-          >
-            {levelText}
-          </span>
+          isOverall ? (
+            <span
+              data-testid={`row-levels-${team.rank}`}
+              style={{ fontSize: `${levelFontSize}px` }}
+              className="font-jakarta font-semibold text-indigo-900/85 truncate leading-tight mt-0.5"
+            >
+              {levelText}
+            </span>
+          ) : (
+            <div
+              data-testid={`row-levels-${team.rank}`}
+              style={{ fontSize: `${levelFontSize}px` }}
+              className="flex items-center gap-1 font-jakarta truncate leading-tight mt-0.5"
+            >
+              {levelItems!.map((item, idx) => (
+                <span key={item.id} className="inline-flex items-center">
+                  {idx > 0 && (
+                    <span className="text-indigo-900/40 px-1 font-normal">·</span>
+                  )}
+                  {item.isActive ? (
+                    <span className="font-bold text-indigo-950 bg-indigo-950/12 px-1.5 py-0.5 rounded leading-none">
+                      L{item.short}: {formatScore(item.score)}
+                    </span>
+                  ) : (
+                    <span
+                      className={
+                        item.score === 0
+                          ? 'text-indigo-900/60 font-medium'
+                          : 'text-indigo-950 font-bold'
+                      }
+                    >
+                      L{item.short}: {formatScore(item.score)}
+                    </span>
+                  )}
+                </span>
+              ))}
+            </div>
+          )
         )}
       </div>
 
@@ -575,12 +619,60 @@ const RankList = memo(function RankList({
     return displayedTeams.filter((t) => !t.out).every((t) => (t.focusScore || 0) === 0);
   }, [displayedTeams]);
 
-  // Played levels: at least one group has a non-zero score in that level, at most last 4
+  // 1. Level & PTS header label calculation
+  const isOverall = !currentFocus || currentFocus === 'all';
+  const activeLevel = !isOverall ? levels.find((l) => l.id === currentFocus) : null;
+  const headerPtsLabel = isOverall
+    ? 'TOTAL PTS'
+    : `${(activeLevel?.name || 'LEVEL').toUpperCase()} PTS`;
+
+  // If longer than 22 characters, fit it to the available width
+  const headerPtsFontSize = useMemo(() => {
+    if (headerPtsLabel.length <= 22) return headerFontSize;
+    return Math.max(14, Math.floor(headerFontSize * (22 / headerPtsLabel.length)));
+  }, [headerPtsLabel, headerFontSize]);
+
+  // Played levels: at least one group has a non-zero score in that level
   const playedLevels = useMemo(() => {
-    return levels
-      .filter((lvl) => allTeams.some((t) => (t.scores[lvl.id] ?? 0) !== 0))
-      .slice(-4);
+    return levels.filter((lvl) => allTeams.some((t) => (t.scores[lvl.id] ?? 0) !== 0));
   }, [levels, allTeams]);
+
+  // Compute displayed level order (at most 4 levels):
+  // On Level tab, start with ACTIVE level, followed by other played levels in usual order (at most 4).
+  // If active level is not among last 4 played levels, drop oldest one to make room.
+  const displayedLevels = useMemo(() => {
+    if (isOverall || !activeLevel) {
+      return playedLevels.slice(-4);
+    }
+    const withActive = playedLevels.some((l) => l.id === activeLevel.id)
+      ? playedLevels
+      : [...playedLevels, activeLevel];
+
+    if (withActive.length <= 4) {
+      return [activeLevel, ...withActive.filter((l) => l.id !== activeLevel.id)];
+    }
+
+    const last4 = withActive.slice(-4);
+    const containsActive = last4.some((l) => l.id === activeLevel.id);
+    if (containsActive) {
+      return [activeLevel, ...last4.filter((l) => l.id !== activeLevel.id)];
+    }
+    // Drop oldest to make room
+    return [activeLevel, ...last4.slice(1)];
+  }, [isOverall, activeLevel, playedLevels]);
+
+  const getTeamLevelItems = (team: RankedTeam): LevelScoreItem[] => {
+    return displayedLevels.map((lvl) => {
+      const idx = levels.findIndex((l) => l.id === lvl.id);
+      const short = idx !== -1 ? String(idx + 1) : (lvl.name.replace(/[^0-9]/g, '') || lvl.name.charAt(0));
+      return {
+        id: lvl.id,
+        short,
+        score: team.scores[lvl.id] ?? 0,
+        isActive: !isOverall && lvl.id === activeLevel?.id,
+      };
+    });
+  };
 
   // If 3 columns (15 to 21 groups): names shrink to 24px and level line is hidden
   const hideLevelLine = numCols >= 3;
@@ -591,7 +683,7 @@ const RankList = memo(function RankList({
       data-testid="rank-list-container"
       className="w-full h-full flex flex-col justify-start overflow-hidden min-h-0"
     >
-      {/* 1. Slim Header Strip: "TEAM STANDINGS" left, "TOTAL PTS" right */}
+      {/* 1. Slim Header Strip: "TEAM STANDINGS" left, "TOTAL PTS" or "<LEVEL> PTS" right */}
       <div
         style={{ height: `${headerStripHeight}px` }}
         className="w-full flex items-center justify-between px-3 text-white shrink-0"
@@ -618,10 +710,11 @@ const RankList = memo(function RankList({
           </span>
         </div>
         <div
-          style={{ fontSize: `${headerFontSize}px` }}
-          className="text-white/90 font-outfit uppercase tracking-wider font-extrabold leading-none"
+          data-testid="rank-list-header-pts"
+          style={{ fontSize: `${headerPtsFontSize}px` }}
+          className="text-white/90 font-outfit uppercase tracking-wider font-extrabold leading-none truncate shrink-0 max-w-[50%] text-right"
         >
-          TOTAL PTS
+          {headerPtsLabel}
         </div>
       </div>
 
@@ -650,7 +743,9 @@ const RankList = memo(function RankList({
                     rowHeight={rowHeight}
                     allZero={allZero}
                     hideLevelLine={hideLevelLine}
+                    levelItems={getTeamLevelItems(team)}
                     levelText={levelText}
+                    isOverall={isOverall}
                     baseNameSize={baseNameSize}
                     disableAnimation={true}
                     layout={layout}
@@ -678,8 +773,8 @@ const RankList = memo(function RankList({
           >
             <AnimatePresence mode="popLayout" initial={false}>
               {listTeams.map((team) => {
-                const levelText = formatPlayedLevelScores(playedLevels, team);
                 const wasOnPodium = prevPodiumIdsRef.current.has(team.id);
+                const levelText = formatPlayedLevelScores(playedLevels, team);
                 return (
                   <StadiumRow
                     key={team.id}
@@ -687,7 +782,9 @@ const RankList = memo(function RankList({
                     rowHeight={rowHeight}
                     allZero={allZero}
                     hideLevelLine={hideLevelLine}
+                    levelItems={getTeamLevelItems(team)}
                     levelText={levelText}
+                    isOverall={isOverall}
                     baseNameSize={baseNameSize}
                     animationEvent={animationEvents[team.id]}
                     disableAnimation={disableAnimation}
