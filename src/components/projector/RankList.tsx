@@ -179,7 +179,6 @@ const StadiumRow = memo(function StadiumRow({
   animationEvent,
   eliminationEvent,
   disableAnimation,
-  soundEnabled,
   wasOnPodium,
   layout,
 }: StadiumRowProps) {

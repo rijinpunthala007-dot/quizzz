@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState, useRef, useCallback } from 'react';
+import { useMemo, useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { QuizState, RevealSnapshotTeam, CelebrationWording } from '../../types';
 import { DEFAULT_WORDING } from '../../types';
@@ -979,7 +979,7 @@ function IndividualCelebrationCard({
   place: 1 | 2 | 3;
   cardWidth: number;
   cardHeight: number;
-  variant: 'full' | 'narrow' | 'compact';
+  variant: 'full' | 'narrow' | 'compact' | 'honour-roll';
   delay: number;
   pillText: string;
   taglineText: string;
