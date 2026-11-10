@@ -47,13 +47,14 @@
   z-index: 1;
 }
 
-/* Banner Ribbon with Hexagon Angle Cuts */
+/* Banner Ribbon with Hexagon Angle Cuts (restored polygon) */
 .win2BannerRibbon {
   position: relative;
   background: linear-gradient(135deg, rgba(88, 28, 135, 0.95) 0%, rgba(126, 34, 206, 0.95) 50%, rgba(88, 28, 135, 0.95) 100%);
   border-top: 2px solid rgba(255, 226, 122, 0.85);
   border-bottom: 2px solid rgba(255, 226, 122, 0.85);
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.55), 0 0 25px rgba(245, 166, 35, 0.35);
+  clip-path: polygon(4% 0%, 96% 0%, 100% 50%, 96% 100%, 4% 100%, 0% 50%);
   overflow: hidden;
 }
 
@@ -149,6 +150,7 @@
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.85));
   opacity: 0.92;
+  text-align: center;
 }
 
 .win2PedestalNumSecond {
@@ -162,6 +164,7 @@
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.85));
   opacity: 0.90;
+  text-align: center;
 }
 
 .win2PedestalNumThird {
@@ -175,6 +178,7 @@
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.85));
   opacity: 0.90;
+  text-align: center;
 }
 
 /* Card Frames */
@@ -234,6 +238,25 @@
   box-shadow: 0 16px 36px rgba(8, 3, 25, 0.55), 0 0 22px rgba(185, 115, 47, 0.22);
 }
 
+/* Honour Roll Card */
+.win2CardHonourRoll {
+  position: relative;
+  border-radius: 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  z-index: 20;
+  overflow: visible;
+
+  border: 2px solid transparent;
+  background:
+    linear-gradient(180deg, rgba(68, 30, 175, 0.95) 0%, rgba(48, 20, 135, 0.97) 50%, rgba(36, 14, 110, 0.98) 100%) padding-box,
+    linear-gradient(135deg, var(--win2-gold-1) 0%, var(--win2-gold-2) 50%, var(--win2-gold-1) 100%) border-box;
+  box-shadow: 0 20px 50px rgba(10, 4, 30, 0.65), 0 0 40px rgba(245, 166, 35, 0.4);
+}
+
 /* Static Soft Gold Glow on Winner Card */
 .win2GoldGlow {
   position: absolute;
@@ -291,11 +314,21 @@
   100% { transform: rotate(25deg) translateX(750px); opacity: 0; }
 }
 
-/* Rank Pills */
-.win2PillFirst {
+/* Rank Pill Positioning Wrapper */
+.win2PillWrapper {
   position: absolute;
   left: 50%;
-  transform: translateX(-50%);
+  top: 0;
+  transform: translate(-50%, -50%);
+  z-index: 50;
+  max-width: calc(100% - 16px);
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+}
+
+/* Rank Pills */
+.win2PillFirst {
   background: linear-gradient(90deg, var(--win2-gold-1) 0%, var(--win2-gold-2) 50%, var(--win2-gold-1) 100%);
   border: 1.5px solid #9A650C;
   color: #0F0529;
@@ -311,13 +344,9 @@
   justify-content: center;
   line-height: 1;
   box-sizing: border-box;
-  z-index: 30;
 }
 
 .win2PillSecond {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
   background: linear-gradient(90deg, #FFFFFF 0%, #D1D5DB 100%);
   border: 1.5px solid #6B7280;
   color: #0F0529;
@@ -333,13 +362,9 @@
   justify-content: center;
   line-height: 1;
   box-sizing: border-box;
-  z-index: 30;
 }
 
 .win2PillThird {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
   background: linear-gradient(90deg, #9A3412 0%, #8C3B0D 50%, #702808 100%);
   border: 1.5px solid #4D1805;
   color: #FFFFFF;
@@ -355,7 +380,6 @@
   justify-content: center;
   line-height: 1;
   box-sizing: border-box;
-  z-index: 30;
 }
 
 /* Twinkling Stars */
@@ -381,4 +405,3 @@
     display: none !important;
   }
 }
-

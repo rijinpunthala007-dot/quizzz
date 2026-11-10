@@ -6,6 +6,7 @@ interface UseFitTextOptions {
   maxLines?: number;
   lineHeight?: number;
   fontFamily?: string;
+  fontWeight?: string | number;
 }
 
 export interface FitTextResult {
@@ -14,7 +15,7 @@ export interface FitTextResult {
 }
 
 /**
- * Robust binary-search text fitting hook for team names on podium cards.
+ * Robust binary-search text fitting hook for team names and text on celebration cards.
  * Words never split, never ellipsis, checks 1 line first, then 2 lines.
  * Re-runs on fonts.ready and container resize.
  */
@@ -26,6 +27,8 @@ export function useFitText<T extends HTMLElement = HTMLElement>(
     maxFontSize,
     minFontSize,
     lineHeight = 1.05,
+    fontFamily = "'Cinzel', serif",
+    fontWeight = 900,
   } = options;
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,6 +58,7 @@ export function useFitText<T extends HTMLElement = HTMLElement>(
     el.style.hyphens = 'none';
     el.style.lineHeight = `${lineHeight}`;
     el.style.whiteSpace = 'normal';
+    el.style.textOverflow = 'clip';
     el.style.transform = '';
 
     // Step 1: Canvas 1-line check
@@ -62,7 +66,7 @@ export function useFitText<T extends HTMLElement = HTMLElement>(
     const ctx = canvas.getContext('2d');
     const checkOneLine = (size: number): boolean => {
       if (!ctx) return false;
-      ctx.font = `900 ${size}px 'Cinzel', serif`;
+      ctx.font = `${fontWeight} ${size}px ${fontFamily}`;
       const textWidth = ctx.measureText(text).width;
       return textWidth <= availWidth && size * lineHeight <= availHeight;
     };
@@ -117,36 +121,25 @@ export function useFitText<T extends HTMLElement = HTMLElement>(
     const scale = Math.min(1, sW, sH);
 
     setResult({ fontSize: minFontSize, scale });
-  }, [text, maxFontSize, minFontSize, lineHeight]);
+  }, [text, maxFontSize, minFontSize, lineHeight, fontFamily, fontWeight]);
 
   useLayoutEffect(() => {
     fit();
-
-    if (typeof document !== 'undefined' && document.fonts?.ready) {
-      document.fonts.ready.then(fit);
-    }
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    let ro: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(fit);
-      ro.observe(container);
-    }
-
-    const handleWindow = () => fit();
-    window.addEventListener('resize', handleWindow);
-    window.addEventListener('fullscreenchange', handleWindow);
-    window.addEventListener('orientationchange', handleWindow);
-
-    return () => {
-      if (ro) ro.disconnect();
-      window.removeEventListener('resize', handleWindow);
-      window.removeEventListener('fullscreenchange', handleWindow);
-      window.removeEventListener('orientationchange', handleWindow);
-    };
   }, [fit]);
 
-  return { containerRef, textRef, result };
+  useLayoutEffect(() => {
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      document.fonts.ready.then(() => fit());
+    }
+  }, [fit]);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => fit());
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [fit]);
+
+  return { containerRef, textRef, result, refit: fit };
 }
