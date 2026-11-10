@@ -28,7 +28,7 @@ export interface RowAnimationEvent {
 
 export interface EliminationEvent {
   delay: number;
-  isLast: boolean;
+  isStrike?: boolean;
   timestamp: number;
 }
 
@@ -42,17 +42,18 @@ function playEliminationThud() {
 
     osc.type = 'sine';
     const now = ctx.currentTime;
-    osc.frequency.setValueAtTime(120, now);
-    osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
+    // ONE soft low thud, 120ms long, exponential ramp 110Hz to 45Hz
+    osc.frequency.setValueAtTime(110, now);
+    osc.frequency.exponentialRampToValueAtTime(45, now + 0.12);
 
     gain.gain.setValueAtTime(0.35, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.28);
+    osc.stop(now + 0.13);
     osc.onended = () => {
       ctx.close().catch(() => {});
     };
@@ -188,20 +189,9 @@ const StadiumRow = memo(function StadiumRow({
   const isMarked = Boolean(team.marked);
   const hasElimAnim = Boolean(eliminationEvent && !disableAnimation);
   const delay = eliminationEvent?.delay ?? 0;
-  const isLast = eliminationEvent?.isLast ?? true;
-  const stampAnimClass = isLast ? styles.list2StampAnimLong : styles.list2StampAnimShort;
-  const tagFadeDelay = delay + 800 + (isLast ? 1300 : 350);
-
-  // Audio thud triggered when stamp slams in (delay + 800ms)
-  useEffect(() => {
-    if (!hasElimAnim || !soundEnabled) return;
-    const timer = setTimeout(() => {
-      if (!document.hidden) {
-        playEliminationThud();
-      }
-    }, delay + 800);
-    return () => clearTimeout(timer);
-  }, [hasElimAnim, delay, eliminationEvent?.timestamp, soundEnabled]);
+  const isStrike = Boolean(eliminationEvent?.isStrike);
+  const fillDelay = delay + (isStrike ? 300 : 0);
+  const tagDelay = fillDelay + 450;
 
   // Format badge text: ties as "T-11", all-zero or zero score as "—"
   const isZeroScore = allZero || (team.focusScore || 0) === 0;
@@ -229,7 +219,6 @@ const StadiumRow = memo(function StadiumRow({
   const tagFontSize = Math.floor(22 * s);
   const tagMinWidth = Math.floor(96 * s);
   const tagGap = Math.floor(12 * s);
-  const stampFontSize = Math.floor(56 * s);
 
   return (
     <motion.article
@@ -256,46 +245,27 @@ const StadiumRow = memo(function StadiumRow({
           height: `${rowHeight}px`,
           padding: `${Math.floor(6 * s)}px ${Math.floor(16 * s)}px`,
           gap: `${Math.floor(12 * s)}px`,
-          ...(hasElimAnim ? { animationDelay: `${delay}ms` } : {}),
         } as React.CSSProperties
       }
       className={`${styles.list2Row} ${
         isMarked && !hasElimAnim ? styles.list2RowMarked : ''
       } ${
-        hasElimAnim ? styles.list2Pulse : ''
+        disableAnimation ? styles.list2RowReduced : ''
       } ${
-        animationEvent || hasElimAnim ? styles.list2RowOverflow : ''
+        animationEvent ? styles.list2RowOverflow : ''
       } ${
         animationEvent?.scoreDiff && animationEvent.scoreDiff < 0 && animationEvent.allowChipsAndGlow
           ? styles.list2RowDim
           : ''
       }`}
     >
-      {/* Live elimination wipe layer */}
+      {/* Live elimination light red fill layer (0 to 550ms fade-in) */}
       {hasElimAnim && (
         <div
-          className={styles.list2WipeLayer}
-          style={{ animationDelay: `${delay + 100}ms` }}
+          data-testid="fill-layer"
+          className={styles.list2FillLayer}
+          style={{ animationDelay: `${fillDelay}ms` }}
         />
-      )}
-
-      {/* Live elimination stamp slam overlay */}
-      {hasElimAnim && (
-        <div className={styles.list2StampOverlay}>
-          <div
-            className={`${styles.list2Stamp} ${stampAnimClass}`}
-            style={{
-              fontSize: `${stampFontSize}px`,
-              animationDelay: `${delay + 800}ms`,
-            }}
-          >
-            ELIMINATED
-            <div
-              className={styles.list2StampRing}
-              style={{ animationDelay: `${delay + 800}ms` }}
-            />
-          </div>
-        </div>
       )}
 
       {/* 1. Rank: fixed width with vertical rolling number on rank change */}
@@ -305,11 +275,11 @@ const StadiumRow = memo(function StadiumRow({
           width: `${rankBadgeWidth}px`,
           fontSize: `${rankBadgeFontSize}px`,
           zIndex: 5,
-          ...(hasElimAnim ? { animationDelay: `${delay + 450}ms` } : {}),
+          ...(hasElimAnim ? { animationDelay: `${fillDelay}ms` } : {}),
         }}
         className={`shrink-0 font-outfit font-bold tracking-tight leading-none text-center flex items-center justify-center relative overflow-hidden h-full ${
           isMarked && !hasElimAnim ? styles.list2RowMarkedText : 'text-indigo-950'
-        } ${hasElimAnim ? `${styles.list2RowMarkedText} ${styles.list2CrossfadeIn}` : ''}`}
+        } ${hasElimAnim ? styles.list2TextCrossfade : ''}`}
       >
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.span
@@ -352,14 +322,14 @@ const StadiumRow = memo(function StadiumRow({
         <Avatar name={team.name} id={team.id} size={avatarSize} fontSize={avatarFontSize} />
         {isMarked && (
           <div
-            className={`${styles.list2AvatarDimOverlay} ${hasElimAnim ? styles.list2CrossfadeIn : ''}`}
+            className={`${styles.list2AvatarDimOverlay} ${hasElimAnim ? styles.list2AvatarDimFadeIn : ''}`}
             style={{
               position: 'absolute',
               inset: 0,
               borderRadius: '50%',
               backgroundColor: 'rgba(100, 100, 100, 0.55)',
               pointerEvents: 'none',
-              ...(hasElimAnim ? { animationDelay: `${delay + 450}ms` } : {}),
+              ...(hasElimAnim ? { animationDelay: `${fillDelay}ms` } : {}),
             }}
           />
         )}
@@ -371,6 +341,14 @@ const StadiumRow = memo(function StadiumRow({
         className="flex flex-col justify-center leading-tight overflow-hidden h-full relative"
         style={{ flex: '1 1 0%', minWidth: 0, zIndex: 5 }}
       >
+        {/* Optional Strike-Through Line */}
+        {hasElimAnim && isStrike && (
+          <div
+            data-testid="strike-line"
+            className={styles.list2StrikeLine}
+            style={{ animationDelay: `${delay}ms` }}
+          />
+        )}
         <div
           ref={nameContainerRef}
           data-testid={`row-name-zone-${team.rank}`}
@@ -381,7 +359,7 @@ const StadiumRow = memo(function StadiumRow({
             data-testid={`row-name-text-${team.rank}`}
             className={`font-outfit font-bold tracking-wide ${
               isMarked && !hasElimAnim ? styles.list2RowMarkedText : 'text-indigo-950'
-            } ${hasElimAnim ? `${styles.list2RowMarkedText} ${styles.list2CrossfadeIn}` : ''}`}
+            } ${hasElimAnim ? styles.list2TextCrossfade : ''}`}
             style={{
               fontSize: `${nameStyle.fontSize}px`,
               letterSpacing: nameStyle.letterSpacing,
@@ -392,7 +370,7 @@ const StadiumRow = memo(function StadiumRow({
               hyphens: 'none',
               margin: 0,
               padding: 0,
-              ...(hasElimAnim ? { animationDelay: `${delay + 450}ms` } : {}),
+              ...(hasElimAnim ? { animationDelay: `${fillDelay}ms` } : {}),
             }}
           >
             {team.name.split(' ').map((word, wIdx, arr) => (
@@ -417,21 +395,25 @@ const StadiumRow = memo(function StadiumRow({
       </div>
 
       {/* Small Permanent OUT Tag */}
-      {isMarked && (
-        <div
-          data-testid={`row-out-tag-${team.rank}`}
-          className={`${styles.list2OutTag} ${hasElimAnim ? styles.list2TagFadeIn : ''}`}
-          style={{
-            height: `${tagHeight}px`,
-            minWidth: `${tagMinWidth}px`,
-            fontSize: `${tagFontSize}px`,
-            marginLeft: `${tagGap}px`,
-            ...(hasElimAnim ? { animationDelay: `${tagFadeDelay}ms` } : {}),
-          }}
-        >
-          OUT
-        </div>
-      )}
+      <AnimatePresence>
+        {isMarked && (
+          <motion.div
+            data-testid={`row-out-tag-${team.rank}`}
+            initial={false}
+            exit={{ opacity: 0, transition: { duration: 0.3 } }}
+            className={`${styles.list2OutTag} ${hasElimAnim ? styles.list2OutTagPop : ''}`}
+            style={{
+              height: `${tagHeight}px`,
+              minWidth: `${tagMinWidth}px`,
+              fontSize: `${tagFontSize}px`,
+              marginLeft: `${tagGap}px`,
+              ...(hasElimAnim ? { animationDelay: `${tagDelay}ms` } : {}),
+            }}
+          >
+            OUT
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 4. Score + PTS */}
       <div
@@ -456,20 +438,20 @@ const StadiumRow = memo(function StadiumRow({
           disableAnimation={disableAnimation}
           className={`font-outfit font-extrabold tabular-nums drop-shadow-sm leading-none ${
             isMarked && !hasElimAnim ? styles.list2RowMarkedText : 'text-indigo-950'
-          } ${hasElimAnim ? `${styles.list2RowMarkedText} ${styles.list2CrossfadeIn}` : ''}`}
+          } ${hasElimAnim ? styles.list2TextCrossfade : ''}`}
           style={{
             fontSize: `${scoreFontSize}px`,
-            ...(hasElimAnim ? { animationDelay: `${delay + 450}ms` } : {}),
+            ...(hasElimAnim ? { animationDelay: `${fillDelay}ms` } : {}),
           }}
         />
         <span
           style={{
             fontSize: `${ptsFontSize}px`,
-            ...(hasElimAnim ? { animationDelay: `${delay + 450}ms` } : {}),
+            ...(hasElimAnim ? { animationDelay: `${fillDelay}ms` } : {}),
           }}
           className={`font-outfit font-bold tracking-wider uppercase leading-none ${
             isMarked && !hasElimAnim ? styles.list2RowMarkedPts : 'text-indigo-800/80'
-          } ${hasElimAnim ? `${styles.list2RowMarkedPts} ${styles.list2CrossfadeIn}` : ''}`}
+          } ${hasElimAnim ? styles.list2PtsCrossfade : ''}`}
         >
           PTS
         </span>
@@ -532,6 +514,10 @@ const RankList = memo(function RankList({
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const disableAnimation = isClassicList || isLite || isFxOff || prefersReduced;
+  const isStrike = Boolean(
+    (quizState as unknown as { strikeThrough?: boolean })?.strikeThrough ||
+    searchParams?.get('strike') === '1'
+  );
 
   // Baseline committed teams snapshot
   const committedTeamsRef = useRef<RankedTeam[]>(teams);
@@ -656,21 +642,38 @@ const RankList = memo(function RankList({
       const baseDelay = hasScoreOrRankChange ? 800 : 0;
       const newElimEvents: Record<string, EliminationEvent> = {};
       const now = Date.now();
+      const N = newlyMarkedTeams.length;
 
       newlyMarkedTeams.forEach((t, idx) => {
-        const delay = baseDelay + Math.min(idx * 350, 4000);
-        const isLast = idx === newlyMarkedTeams.length - 1;
+        let stagger = 0;
+        if (N > 1) {
+          if (N > 10) {
+            stagger = Math.round((idx / (N - 1)) * 1500);
+          } else {
+            stagger = idx * 150;
+          }
+        }
+        const delay = baseDelay + stagger;
         newElimEvents[t.id] = {
           delay,
-          isLast,
+          isStrike,
           timestamp: now,
         };
       });
 
       setEliminationEvents(newElimEvents);
 
-      const maxDelay = baseDelay + Math.min((newlyMarkedTeams.length - 1) * 350, 4000);
-      const totalAnimDuration = maxDelay + 2600;
+      // Audio: ONE soft low thud per batch when the first row starts
+      if (quizState.eliminationSound && !disableAnimation) {
+        setTimeout(() => {
+          if (!document.hidden) {
+            playEliminationThud();
+          }
+        }, baseDelay);
+      }
+
+      const maxDelay = baseDelay + (N > 1 ? (N > 10 ? 1500 : (N - 1) * 150) : 0);
+      const totalAnimDuration = maxDelay + (isStrike ? 1100 : 800) + 100;
 
       if (elimTimerRef.current) clearTimeout(elimTimerRef.current);
       elimTimerRef.current = setTimeout(() => {

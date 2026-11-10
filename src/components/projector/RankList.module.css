@@ -29,7 +29,7 @@
   flex-shrink: 0;
   width: 100%;
   user-select: none;
-  transition: background-color 400ms ease, border-color 400ms ease;
+  transition: background-color 300ms ease, border-color 300ms ease;
   overflow: hidden;
 }
 
@@ -41,7 +41,7 @@
   background: #e7e3fd;
 }
 
-/* MARKED RED ROW STYLES */
+/* MARKED RED ROW STYLES (Light red theme) */
 .list2RowMarked {
   background: #FFA9B6 !important;
   border-color: #E0485F !important;
@@ -59,6 +59,25 @@
   color: #8E1B2E !important;
 }
 
+/* Light Red Fill Layer (0 to 550ms crossfade) */
+.list2FillLayer {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background-color: #FFA9B6;
+  border: 1px solid #E0485F;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  animation: list2FadeIn 550ms ease-out forwards;
+  will-change: opacity;
+}
+
+@keyframes list2FadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
 /* Avatar Dim Overlay */
 .list2AvatarDimOverlay {
   position: absolute;
@@ -67,6 +86,38 @@
   background-color: rgba(100, 100, 100, 0.55);
   pointer-events: none;
   z-index: 2;
+}
+
+.list2AvatarDimFadeIn {
+  opacity: 0;
+  animation: list2AvatarFade 550ms ease-out forwards;
+  will-change: opacity;
+}
+
+@keyframes list2AvatarFade {
+  0% { opacity: 0; }
+  100% { opacity: 0.55; }
+}
+
+/* Text and PTS Color Crossfade (0 to 550ms) */
+.list2TextCrossfade {
+  animation: list2TextColor 550ms ease-out forwards;
+  will-change: color;
+}
+
+@keyframes list2TextColor {
+  0% { color: #1e1b4b; }
+  100% { color: #6B0F1F; }
+}
+
+.list2PtsCrossfade {
+  animation: list2PtsColor 550ms ease-out forwards;
+  will-change: color;
+}
+
+@keyframes list2PtsColor {
+  0% { color: rgba(55, 48, 163, 0.8); }
+  100% { color: #8E1B2E; }
 }
 
 /* Small Permanent OUT Tag */
@@ -85,159 +136,56 @@
   user-select: none;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   z-index: 5;
+  transition: opacity 300ms ease;
 }
 
-/* Row Pulse (0 - 250ms) */
-@keyframes list2RowPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.02); }
-  100% { transform: scale(1); }
+/* OUT Tag Pop-in (450 to 800ms, 350ms duration) */
+.list2OutTagPop {
+  opacity: 0;
+  animation: list2TagPopAnim 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
-.list2Pulse {
-  animation: list2RowPulse 250ms ease-in-out forwards;
-  will-change: transform;
+@keyframes list2TagPopAnim {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-/* Red Wipe Layer (100 - 800ms) */
-.list2WipeLayer {
+/* Optional Strike-Through Line (0 to 300ms) */
+.list2StrikeLine {
   position: absolute;
-  inset: 0;
-  border-radius: 9999px;
-  background-color: #FFA9B6;
-  border: 1px solid #E0485F;
+  left: 0;
+  right: 0;
+  top: 50%;
+  margin-top: -1.5px;
+  height: 3px;
+  background-color: #6B0F1F;
+  border-radius: 2px;
   transform-origin: left center;
-  z-index: 1;
+  transform: scaleX(0);
   pointer-events: none;
-  animation: list2Wipe 700ms ease-in-out forwards;
+  z-index: 10;
+  animation: list2StrikeAnim 300ms ease-out forwards;
   will-change: transform;
 }
 
-@keyframes list2Wipe {
+@keyframes list2StrikeAnim {
   0% { transform: scaleX(0); }
   100% { transform: scaleX(1); }
 }
 
-/* Text and Avatar Dim Crossfade (during 450 - 800ms) */
-@keyframes list2CrossfadeIn {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-.list2CrossfadeIn {
-  animation: list2CrossfadeIn 350ms ease-in-out forwards;
-  will-change: opacity;
-}
-
-/* Large ELIMINATED Stamp Overlay */
-.list2StampOverlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 50;
-  overflow: visible;
-}
-
-.list2Stamp {
-  position: relative;
-  background-color: rgba(255, 240, 242, 0.94);
-  border: 4px solid #8E1B2E;
-  border-radius: 12px;
-  color: #8E1B2E;
-  font-family: 'Outfit', sans-serif;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-align: center;
-  white-space: nowrap;
-  padding: 4px 28px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  opacity: 0;
-  will-change: transform, opacity;
-}
-
-/* Stamp Animation - single/last row (1.3s hold + 300ms fade) */
-@keyframes list2StampSlamLong {
-  0% {
-    opacity: 0;
-    transform: rotate(-4deg) scale(1.7);
-  }
-  14% { /* ~220ms ease-out */
-    opacity: 1;
-    transform: rotate(-4deg) scale(1);
-  }
-  81% { /* ~1300ms hold */
-    opacity: 1;
-    transform: rotate(-4deg) scale(1);
-  }
-  100% { /* 300ms fadeout */
-    opacity: 0;
-    transform: rotate(-4deg) scale(0.96);
-  }
-}
-
-/* Stamp Animation - queue/intermediate row (350ms hold then fast crossfade) */
-@keyframes list2StampSlamShort {
-  0% {
-    opacity: 0;
-    transform: rotate(-4deg) scale(1.7);
-  }
-  40% { /* ~200ms ease-out */
-    opacity: 1;
-    transform: rotate(-4deg) scale(1);
-  }
-  75% { /* hold until 350ms */
-    opacity: 1;
-    transform: rotate(-4deg) scale(1);
-  }
-  100% { /* fast fadeout */
-    opacity: 0;
-    transform: rotate(-4deg) scale(0.96);
-  }
-}
-
-.list2StampAnimLong {
-  animation: list2StampSlamLong 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.list2StampAnimShort {
-  animation: list2StampSlamShort 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Expanding Ring */
-.list2StampRing {
-  position: absolute;
-  inset: -6px;
-  border: 2px solid #E0485F;
-  border-radius: 16px;
-  pointer-events: none;
-  animation: list2RingAnim 500ms ease-out forwards;
-  will-change: transform, opacity;
-}
-
-@keyframes list2RingAnim {
-  0% {
-    transform: scale(1);
-    opacity: 0.6;
-  }
-  100% {
-    transform: scale(1.6);
-    opacity: 0;
-  }
-}
-
-/* OUT Tag Fade-in */
-.list2TagFadeIn {
-  opacity: 0;
-  animation: list2TagFadeInAnim 300ms ease-out forwards;
-  will-change: opacity;
-}
-
-@keyframes list2TagFadeInAnim {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
+.list2RowReduced {
+  transition: background-color 200ms ease, border-color 200ms ease !important;
 }
 
 /* Accessibility: prefers-reduced-motion */
@@ -247,16 +195,13 @@
   .list2GainChip,
   .list2RankImprove,
   .list2RankDrop,
-  .list2Pulse,
-  .list2WipeLayer,
-  .list2Stamp,
-  .list2StampAnimLong,
-  .list2StampAnimShort,
-  .list2StampRing,
-  .list2TagFadeIn,
-  .list2CrossfadeIn {
+  .list2FillLayer,
+  .list2AvatarDimFadeIn,
+  .list2TextCrossfade,
+  .list2PtsCrossfade,
+  .list2OutTagPop,
+  .list2StrikeLine {
     animation: none !important;
-    opacity: 0 !important;
   }
 }
 
