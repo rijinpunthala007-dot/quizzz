@@ -208,6 +208,7 @@ function useFitPodiumScore(scoreStr: string, maxScoreSize: number, availScoreWid
 function WinnerCrown() {
   return (
     <div
+      data-testid="podium-crown"
       style={{
         position: 'absolute',
         top: '-14px',
@@ -394,11 +395,23 @@ const PodiumCard = memo(function PodiumCard({
   );
 
   const ptsFontSize = Math.floor((isWinner ? 22 : 18) * s);
-  const avatarSize = Math.floor((isWinner ? 90 : 76) * s);
-  const initialsFontSize = Math.floor((isWinner ? 30 : 24) * s);
+  const avatarSize = Math.floor((isWinner ? 84 : 70) * s);
+  const initialsFontSize = Math.floor((isWinner ? 28 : 22) * s);
 
-  const avatarRowHeight = Math.floor((isWinner ? 104 : 82) * s);
+  const avatarRowHeight = Math.floor((isWinner ? 98 : 76) * s);
   const nameRowHeight = Math.floor((isWinner ? 64 : 60) * s);
+  const rowGap = Math.round(6 * s);
+
+  // Pill sizing & reserves
+  const pillHeight = Math.round((isWinner ? 40 : 36) * s);
+  const pillFontSize = Math.round((isWinner ? 28 : 26) * s);
+  const pillMinWidth = Math.max(24, Math.round((isWinner ? 72 : 64) * s));
+  const pillPadX = Math.round(20 * s);
+
+  const pillReserveTop = Math.round((isWinner ? 26 : 24) * s);
+  const cardPaddingBottom = Math.round((isWinner ? 10 : 12) * s);
+  const totalPadding = pillReserveTop + cardPaddingBottom;
+  const targetInnerHeight = cardHeight - totalPadding;
 
   // Safety net scaling ref: if natural height > inner height, scale down uniformly
   const innerGridRef = useRef<HTMLDivElement>(null);
@@ -409,7 +422,7 @@ const PodiumCard = memo(function PodiumCard({
     if (!el) return;
 
     const checkScale = () => {
-      const targetHeight = cardHeight - 26;
+      const targetHeight = cardHeight - totalPadding;
       const actualHeight = el.scrollHeight;
       if (actualHeight > targetHeight && actualHeight > 0) {
         setContentScale(targetHeight / actualHeight);
@@ -427,7 +440,7 @@ const PodiumCard = memo(function PodiumCard({
     return () => {
       if (ro) ro.disconnect();
     };
-  }, [cardHeight, team.name, team.focusScore, nameFontSize, scoreFontSize]);
+  }, [cardHeight, totalPadding, team.name, team.focusScore, nameFontSize, scoreFontSize]);
 
   // Card frame styling class
   const cardFrameClass =
@@ -449,7 +462,11 @@ const PodiumCard = memo(function PodiumCard({
       layout={disableAnimation ? false : 'position'}
       transition={springTransition}
       data-testid={`podium-card-${slotRank}`}
-      style={{ height: `${cardHeight}px` }}
+      style={{
+        height: `${cardHeight}px`,
+        paddingTop: `${pillReserveTop}px`,
+        paddingBottom: `${cardPaddingBottom}px`,
+      }}
       className={`${cardFrameClass} shrink-0 select-none`}
     >
       {/* 1st Place Gold Glow Layer (static, animate opacity only) */}
@@ -472,7 +489,18 @@ const PodiumCard = memo(function PodiumCard({
       )}
 
       {/* Rank Pill above Card (half over the top edge) */}
-      <div className={pillClass}>
+      <div
+        data-testid={`podium-pill-${slotRank}`}
+        className={pillClass}
+        style={{
+          height: `${pillHeight}px`,
+          fontSize: `${pillFontSize}px`,
+          minWidth: `${pillMinWidth}px`,
+          paddingLeft: `${pillPadX}px`,
+          paddingRight: `${pillPadX}px`,
+          top: `-${Math.round(pillHeight / 2)}px`,
+        }}
+      >
         {badgeText}
       </div>
 
@@ -483,7 +511,8 @@ const PodiumCard = memo(function PodiumCard({
           transform: contentScale < 1 ? `scale(${contentScale})` : undefined,
           transformOrigin: 'top center',
           gridTemplateRows: `${avatarRowHeight}px ${nameRowHeight}px 1fr`,
-          height: `${cardHeight - 26}px`,
+          rowGap: `${rowGap}px`,
+          height: `${targetInnerHeight}px`,
         }}
         className={isWinner ? styles.innerGridFirst : styles.innerGridSecondThird}
       >
