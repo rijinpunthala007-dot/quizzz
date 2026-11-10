@@ -122,32 +122,10 @@ const ListScoreRoll = memo(function ListScoreRoll({
 // ---------------------------------------------------------------------------
 // Single List Row Component
 // ---------------------------------------------------------------------------
-function formatPlayedLevelScores(playedLevels: Level[], team: RankedTeam): string {
-  if (!playedLevels || playedLevels.length === 0) return '';
-  return playedLevels
-    .map((lvl) => {
-      const short = lvl.name.replace(/[^0-9]/g, '') || lvl.name.charAt(0);
-      const score = team.scores[lvl.id] ?? 0;
-      return `L${short}: ${formatScore(score)}`;
-    })
-    .join(' · ');
-}
-
-export interface LevelScoreItem {
-  id: string;
-  short: string;
-  score: number;
-  isActive: boolean;
-}
-
 interface StadiumRowProps {
   team: RankedTeam;
   rowHeight: number;
   allZero: boolean;
-  hideLevelLine: boolean;
-  levelItems?: LevelScoreItem[];
-  levelText?: string;
-  isOverall?: boolean;
   baseNameSize: number;
   animationEvent?: RowAnimationEvent;
   disableAnimation: boolean;
@@ -159,10 +137,6 @@ const StadiumRow = memo(function StadiumRow({
   team,
   rowHeight,
   allZero,
-  hideLevelLine,
-  levelItems,
-  levelText,
-  isOverall,
   baseNameSize,
   animationEvent,
   disableAnimation,
@@ -180,13 +154,10 @@ const StadiumRow = memo(function StadiumRow({
     ? (team.displayRank && team.displayRank.startsWith('T') ? team.displayRank : `T-${team.rank}`)
     : `${team.rank}`;
 
-  const hasLevelLine = !hideLevelLine && (isOverall ? Boolean(levelText) : Boolean(levelItems && levelItems.length > 0));
-
   // Name fitting: 1 line first, then 2 lines if needed
   const { containerRef: nameContainerRef, textRef: nameTextRef, style: nameStyle } = useRowNameFit(team.name, {
     baseNameSize,
     rowHeight,
-    hasLevelLine,
     lineHeight: 1.05,
   });
 
@@ -194,7 +165,6 @@ const StadiumRow = memo(function StadiumRow({
   const avatarFontSize = Math.floor(20 * s);
   const rankBadgeWidth = Math.floor(72 * s);
   const rankBadgeFontSize = Math.floor(30 * s);
-  const levelFontSize = Math.floor(22 * s);
   const scoreFontSize = Math.floor(46 * s);
   const ptsFontSize = Math.floor(20 * s);
   const chipFontSize = Math.floor(22 * s);
@@ -282,13 +252,13 @@ const StadiumRow = memo(function StadiumRow({
       {/* 3. NAME BLOCK: flex: 1 1 0%, minWidth: 0, takes ALL the remaining width */}
       <div
         data-testid={`row-name-block-${team.rank}`}
-        className="flex flex-col justify-center leading-tight overflow-hidden"
+        className="flex flex-col justify-center leading-tight overflow-hidden h-full"
         style={{ flex: '1 1 0%', minWidth: 0 }}
       >
         <div
           ref={nameContainerRef}
           data-testid={`row-name-zone-${team.rank}`}
-          className="w-full overflow-hidden flex items-center"
+          className="w-full h-full overflow-hidden flex items-center justify-start"
         >
           <h3
             ref={nameTextRef}
@@ -302,6 +272,8 @@ const StadiumRow = memo(function StadiumRow({
               overflowWrap: 'normal',
               whiteSpace: nameStyle.isSingleLine ? 'nowrap' : 'normal',
               hyphens: 'none',
+              margin: 0,
+              padding: 0,
             }}
           >
             {team.name.split(' ').map((word, wIdx, arr) => (
@@ -323,48 +295,6 @@ const StadiumRow = memo(function StadiumRow({
             ))}
           </h3>
         </div>
-
-        {/* Level line: identical single text string on Overall tab, structured & highlighted on Level tabs */}
-        {hasLevelLine && (
-          isOverall ? (
-            <span
-              data-testid={`row-levels-${team.rank}`}
-              style={{ fontSize: `${levelFontSize}px` }}
-              className="font-jakarta font-semibold text-indigo-900/85 truncate leading-tight mt-0.5"
-            >
-              {levelText}
-            </span>
-          ) : (
-            <div
-              data-testid={`row-levels-${team.rank}`}
-              style={{ fontSize: `${levelFontSize}px` }}
-              className="flex items-center gap-1 font-jakarta truncate leading-tight mt-0.5"
-            >
-              {levelItems!.map((item, idx) => (
-                <span key={item.id} className="inline-flex items-center">
-                  {idx > 0 && (
-                    <span className="text-indigo-900/40 px-1 font-normal">·</span>
-                  )}
-                  {item.isActive ? (
-                    <span className="font-bold text-indigo-950 bg-indigo-950/12 px-1.5 py-0.5 rounded leading-none">
-                      L{item.short}: {formatScore(item.score)}
-                    </span>
-                  ) : (
-                    <span
-                      className={
-                        item.score === 0
-                          ? 'text-indigo-900/60 font-medium'
-                          : 'text-indigo-950 font-bold'
-                      }
-                    >
-                      L{item.short}: {formatScore(item.score)}
-                    </span>
-                  )}
-                </span>
-              ))}
-            </div>
-          )
-        )}
       </div>
 
       {/* 4. Score + PTS: width: auto, flex: 0 0 auto, only as wide as its content */}
@@ -434,7 +364,7 @@ const StadiumRow = memo(function StadiumRow({
 const RankList = memo(function RankList({
   teams,
   levels,
-  allTeams,
+  allTeams: _allTeams,
   rowHeight,
   numCols,
   focus: propFocus,
@@ -632,50 +562,7 @@ const RankList = memo(function RankList({
     return Math.max(14, Math.floor(headerFontSize * (22 / headerPtsLabel.length)));
   }, [headerPtsLabel, headerFontSize]);
 
-  // Played levels: at least one group has a non-zero score in that level
-  const playedLevels = useMemo(() => {
-    return levels.filter((lvl) => allTeams.some((t) => (t.scores[lvl.id] ?? 0) !== 0));
-  }, [levels, allTeams]);
-
-  // Compute displayed level order (at most 4 levels):
-  // On Level tab, start with ACTIVE level, followed by other played levels in usual order (at most 4).
-  // If active level is not among last 4 played levels, drop oldest one to make room.
-  const displayedLevels = useMemo(() => {
-    if (isOverall || !activeLevel) {
-      return playedLevels.slice(-4);
-    }
-    const withActive = playedLevels.some((l) => l.id === activeLevel.id)
-      ? playedLevels
-      : [...playedLevels, activeLevel];
-
-    if (withActive.length <= 4) {
-      return [activeLevel, ...withActive.filter((l) => l.id !== activeLevel.id)];
-    }
-
-    const last4 = withActive.slice(-4);
-    const containsActive = last4.some((l) => l.id === activeLevel.id);
-    if (containsActive) {
-      return [activeLevel, ...last4.filter((l) => l.id !== activeLevel.id)];
-    }
-    // Drop oldest to make room
-    return [activeLevel, ...last4.slice(1)];
-  }, [isOverall, activeLevel, playedLevels]);
-
-  const getTeamLevelItems = (team: RankedTeam): LevelScoreItem[] => {
-    return displayedLevels.map((lvl) => {
-      const idx = levels.findIndex((l) => l.id === lvl.id);
-      const short = idx !== -1 ? String(idx + 1) : (lvl.name.replace(/[^0-9]/g, '') || lvl.name.charAt(0));
-      return {
-        id: lvl.id,
-        short,
-        score: team.scores[lvl.id] ?? 0,
-        isActive: !isOverall && lvl.id === activeLevel?.id,
-      };
-    });
-  };
-
-  // If 3 columns (15 to 21 groups): names shrink to 24px and level line is hidden
-  const hideLevelLine = numCols >= 3;
+  // Base name size: 24 for 3+ cols, 36 for 1-2 cols
   const baseNameSize = numCols >= 3 ? 24 : 36;
 
   return (
@@ -735,17 +622,12 @@ const RankList = memo(function RankList({
               className="flex-1 flex flex-col min-w-0 h-full"
             >
               {listTeams.slice(colIdx * 7, (colIdx + 1) * 7).map((team) => {
-                const levelText = formatPlayedLevelScores(playedLevels, team);
                 return (
                   <StadiumRow
                     key={team.id}
                     team={team}
                     rowHeight={rowHeight}
                     allZero={allZero}
-                    hideLevelLine={hideLevelLine}
-                    levelItems={getTeamLevelItems(team)}
-                    levelText={levelText}
-                    isOverall={isOverall}
                     baseNameSize={baseNameSize}
                     disableAnimation={true}
                     layout={layout}
@@ -774,17 +656,12 @@ const RankList = memo(function RankList({
             <AnimatePresence mode="popLayout" initial={false}>
               {listTeams.map((team) => {
                 const wasOnPodium = prevPodiumIdsRef.current.has(team.id);
-                const levelText = formatPlayedLevelScores(playedLevels, team);
                 return (
                   <StadiumRow
                     key={team.id}
                     team={team}
                     rowHeight={rowHeight}
                     allZero={allZero}
-                    hideLevelLine={hideLevelLine}
-                    levelItems={getTeamLevelItems(team)}
-                    levelText={levelText}
-                    isOverall={isOverall}
                     baseNameSize={baseNameSize}
                     animationEvent={animationEvents[team.id]}
                     disableAnimation={disableAnimation}

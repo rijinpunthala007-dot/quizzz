@@ -3,7 +3,6 @@ import { useState, useLayoutEffect, useRef, useCallback } from 'react';
 interface UseRowNameFitOptions {
   baseNameSize: number;
   rowHeight: number;
-  hasLevelLine: boolean;
   lineHeight?: number;
 }
 
@@ -11,21 +10,23 @@ export function useRowNameFit(text: string, options: UseRowNameFitOptions) {
   const {
     baseNameSize,
     rowHeight,
-    hasLevelLine,
     lineHeight = 1.05,
   } = options;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLHeadingElement>(null);
 
-  // Maximum size = current name size x 1.4, but never more than 45% of row height
-  const maxFontSize = Math.min(
+  // Maximum size: about 1.35 x today's maximum (today's max was min(baseNameSize * 1.4, floor(rowHeight * 0.45)))
+  const todayMax = Math.min(
     Math.round(baseNameSize * 1.4),
     Math.floor(rowHeight * 0.45)
   );
+  const maxFontSize = Math.round(todayMax * 1.35);
 
-  // Minimum size for 1 line = current name size x 0.8
+  // Minimum size for 1 line = current name size x 0.8 (unchanged)
   const minOneLineSize = Math.max(16, Math.round(baseNameSize * 0.8));
+  // Absolute minimum for 2 lines (unchanged)
+  const absoluteMin = 12;
 
   const [style, setStyle] = useState<{
     fontSize: number;
@@ -43,15 +44,12 @@ export function useRowNameFit(text: string, options: UseRowNameFitOptions) {
     if (!container || !el || !text) return;
 
     const availableWidth = container.clientWidth;
-    if (availableWidth <= 0) return;
+    // Available height budget inside row: row height minus row vertical padding
+    const availableHeight = container.clientHeight > 0
+      ? container.clientHeight
+      : Math.max(20, rowHeight - 12);
 
-    // Available height budget inside row
-    // Row padding is 6px top + 6px bottom = 12px (or 16px)
-    const verticalPadding = 14;
-    const availableRowHeight = Math.max(20, rowHeight - verticalPadding);
-    // Level line: text 22px + mt-0.5 + leading-tight takes ~24px
-    const levelHeight = hasLevelLine ? 24 : 0;
-    const maxAvailableNameHeight = Math.max(16, availableRowHeight - levelHeight);
+    if (availableWidth <= 0 || availableHeight <= 0) return;
 
     // Apply strict non-breaking word boundaries
     el.style.wordBreak = 'keep-all';
@@ -64,6 +62,7 @@ export function useRowNameFit(text: string, options: UseRowNameFitOptions) {
     // PHASE 1: Try ONE line first (between minOneLineSize and maxFontSize)
     // -----------------------------------------------------------------
     el.style.whiteSpace = 'nowrap';
+    el.style.width = 'auto';
 
     let low1 = minOneLineSize;
     let high1 = maxFontSize;
@@ -74,7 +73,7 @@ export function useRowNameFit(text: string, options: UseRowNameFitOptions) {
       el.style.fontSize = `${mid}px`;
 
       const fitsWidth = el.scrollWidth <= availableWidth;
-      const fitsHeight = mid * lineHeight <= maxAvailableNameHeight;
+      const fitsHeight = el.scrollHeight <= availableHeight;
 
       if (fitsWidth && fitsHeight) {
         best1LineSize = mid;
@@ -85,6 +84,7 @@ export function useRowNameFit(text: string, options: UseRowNameFitOptions) {
     }
 
     if (best1LineSize >= minOneLineSize) {
+      el.style.fontSize = `${best1LineSize}px`;
       setStyle({
         fontSize: best1LineSize,
         letterSpacing: 'normal',
@@ -97,8 +97,8 @@ export function useRowNameFit(text: string, options: UseRowNameFitOptions) {
     // PHASE 2: Does not fit on 1 line at min size -> Allow a second line!
     // -----------------------------------------------------------------
     el.style.whiteSpace = 'normal';
+    el.style.width = `${availableWidth}px`;
 
-    const absoluteMin = 12;
     let low2 = absoluteMin;
     let high2 = maxFontSize;
     let best2LineSize = absoluteMin;
@@ -111,8 +111,8 @@ export function useRowNameFit(text: string, options: UseRowNameFitOptions) {
       const scrollWidth = el.scrollWidth;
       const scrollHeight = el.scrollHeight;
 
-      // 2 lines budget: mid * lineHeight * 2.15
-      const twoLineHeightBudget = Math.min(maxAvailableNameHeight, mid * lineHeight * 2.15);
+      // 2 lines budget: mid * lineHeight * 2.2, capped by availableHeight
+      const twoLineHeightBudget = Math.min(availableHeight, mid * lineHeight * 2.2);
 
       const fitsWidth = scrollWidth <= availableWidth;
       const fitsHeight = scrollHeight <= twoLineHeightBudget;
@@ -126,7 +126,7 @@ export function useRowNameFit(text: string, options: UseRowNameFitOptions) {
     }
 
     el.style.fontSize = `${best2LineSize}px`;
-    if (el.scrollWidth > availableWidth || el.scrollHeight > maxAvailableNameHeight) {
+    if (el.scrollWidth > availableWidth || el.scrollHeight > availableHeight) {
       neededTightSpacing = true;
     }
 
@@ -135,7 +135,7 @@ export function useRowNameFit(text: string, options: UseRowNameFitOptions) {
       letterSpacing: neededTightSpacing ? '-0.02em' : 'normal',
       isSingleLine: false,
     });
-  }, [text, maxFontSize, minOneLineSize, rowHeight, hasLevelLine, lineHeight]);
+  }, [text, maxFontSize, minOneLineSize, absoluteMin, rowHeight, lineHeight]);
 
   useLayoutEffect(() => {
     fit();
@@ -157,4 +157,3 @@ export function useRowNameFit(text: string, options: UseRowNameFitOptions) {
 
   return { containerRef, textRef, style };
 }
-
