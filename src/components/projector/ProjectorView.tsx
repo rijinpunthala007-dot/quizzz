@@ -12,27 +12,9 @@ import EmptyState from './EmptyState';
 import WinnerConfetti from './WinnerConfetti';
 import RevealStage from '../reveal/RevealStage';
 import WinnersCelebrationStage from '../celebrate/WinnersCelebrationStage';
+import { computeStageH, layoutFor, PROJECTOR_LAYOUT } from './layout';
 
-/**
- * FIXED 1920x1080 stage layout with zero aspect-ratio dependency.
- * Sum of all vertical heights: 6 + 84 + 4 + 44 + 12 + 310 + 8 + 554 + 8 + 44 + 6 = 1080px.
- */
-export const PROJECTOR_LAYOUT = {
-  stageWidth: 1920,
-  stageHeight: 1080,
-  topSpace: 6,
-  bannerHeight: 84,
-  gapBannerTabs: 4,
-  tabsHeight: 44,      // Reserved 44px row
-  gapTabsPodium: 12,    // Reserved 12px gap above podium
-  podiumHeight: 310,    // Podium zone strictly contains cards and #1 pill
-  gapPodiumList: 8,
-  listPanelHeight: 554, // Header 30px + pad 12px + 6 gaps*6px (36px) + 7 rows*68px (476px) = 554px
-  rowHeight: 68,
-  gapListVerse: 8,      // 8px gap between list panel and verse bar
-  verseBarHeight: 44,   // 44px verse bar
-  bottomSpace: 6,
-} as const;
+export { PROJECTOR_LAYOUT, layoutFor, computeStageH };
 
 export default function ProjectorView() {
   const state = useQuizStateReadOnly();
@@ -162,10 +144,14 @@ export default function ProjectorView() {
   const numCols =
     listTeamsCount <= 7 ? 1 : listTeamsCount <= 14 ? 2 : listTeamsCount <= 21 ? 3 : 4;
 
-  // Uniform scale factor, centered on screen
+  const stageH = useMemo(
+    () => computeStageH(viewport.width, viewport.height),
+    [viewport.width, viewport.height]
+  );
+  const layout = useMemo(() => layoutFor(stageH), [stageH]);
   const scale = Math.min(
-    viewport.width / PROJECTOR_LAYOUT.stageWidth,
-    viewport.height / PROJECTOR_LAYOUT.stageHeight
+    viewport.width / layout.stageWidth,
+    viewport.height / layout.stageHeight
   );
 
   const isRevealUrl = typeof window !== 'undefined' && window.location.search.includes('reveal=1');
@@ -185,8 +171,8 @@ export default function ProjectorView() {
       <BackgroundEffects isLight={isLight} />
 
       {/* 
-        FIXED 1920x1080 STAGE:
-        One layout, one set of px values, scaled uniformly with Math.min(w/1920, h/1080),
+        STAGE WITH DYNAMIC HEIGHT (1080 to 1440):
+        Controlled by layoutFor(H), scaled with Math.min(w/1920, h/H),
         centered horizontally and vertically in the viewport with matching background bars.
       */}
       <div
@@ -196,11 +182,15 @@ export default function ProjectorView() {
           position: 'absolute',
           left: '50%',
           top: '50%',
-          width: `${PROJECTOR_LAYOUT.stageWidth}px`,
-          height: `${PROJECTOR_LAYOUT.stageHeight}px`,
+          width: `${layout.stageWidth}px`,
+          height: `${layout.stageHeight}px`,
           transform: `translate(-50%, -50%) scale(${scale})`,
           transformOrigin: 'center center',
-        }}
+          '--stage-h': `${layout.stageHeight}px`,
+          '--t': `${layout.t}`,
+          '--s': `${layout.s}`,
+          '--s-h': `${layout.s_h}`,
+        } as React.CSSProperties}
         className="z-10 overflow-hidden shrink-0 flex flex-col justify-start"
       >
         <AmbientFX leaderId={ranked[0]?.id} levelId={state.focus} />
@@ -210,58 +200,68 @@ export default function ProjectorView() {
           <RevealStage state={state} />
         ) : (
           <>
-            {/* 1. TOP SPACE (6px) */}
-            <div style={{ height: `${PROJECTOR_LAYOUT.topSpace}px` }} className="w-full shrink-0" />
+            {/* 1. TOP SPACE */}
+            <div style={{ height: `${layout.topSpace}px` }} className="w-full shrink-0" />
 
-            {/* 2. BANNER AREA (84px): Eyebrow pill ABOVE hexagon LEADERBOARD banner */}
+            {/* 2. HEADER BLOCK (pill, hexagon banner, tabs: scaled by s_h anchored to top) */}
             <div
-              style={{ height: `${PROJECTOR_LAYOUT.bannerHeight}px` }}
-              className="w-full flex flex-col items-center justify-center shrink-0 px-12"
+              style={{
+                height: `${layout.headerBlockHeight}px`,
+                transform: layout.headerScale !== 1 ? `scale(${layout.headerScale})` : undefined,
+                transformOrigin: 'top center',
+              }}
+              className="w-full shrink-0 flex flex-col items-center justify-start"
             >
-              {/* Eyebrow Pill ABOVE the banner (height ~26px) */}
+              {/* Eyebrow Pill ABOVE the banner (height ~26px) + Hexagon Banner (height ~52px) */}
               <div
-                data-testid="projector-title-pill"
-                className="inline-flex items-center gap-2 px-6 py-1 rounded-full bg-amber-400/20 border border-amber-400/30 text-amber-300 font-outfit text-xs tracking-[0.25em] uppercase font-black drop-shadow shadow-[0_0_16px_rgba(251,191,36,0.35)] mb-1 shrink-0"
+                style={{ height: '84px' }}
+                className="w-full flex flex-col items-center justify-center shrink-0 px-12"
               >
-                <span className="text-amber-400">★</span>
-                <span>{(state.title || 'VERSE UP BIBLE QUIZ 2026').toUpperCase()}</span>
-                <span className="text-amber-400">★</span>
-              </div>
-
-              {/* Hexagon LEADERBOARD Banner (height ~52px) */}
-              <div className="relative flex items-center justify-center w-full max-w-xl shrink-0">
+                {/* Eyebrow Pill ABOVE the banner (height ~26px) */}
                 <div
-                  data-testid="projector-leaderboard-banner"
-                  className="banner-ribbon px-16 py-1.5 w-full text-center flex flex-col items-center justify-center backdrop-blur-md"
+                  data-testid="projector-title-pill"
+                  className="inline-flex items-center gap-2 px-6 py-1 rounded-full bg-amber-400/20 border border-amber-400/30 text-amber-300 font-outfit text-xs tracking-[0.25em] uppercase font-black drop-shadow shadow-[0_0_16px_rgba(251,191,36,0.35)] mb-1 shrink-0"
                 >
-                  <h1 className="font-cinzel text-3xl md:text-4xl text-white tracking-widest font-black uppercase drop-shadow-md m-0 p-0 leading-tight">
-                    LEADERBOARD
-                  </h1>
+                  <span className="text-amber-400">★</span>
+                  <span>{(state.title || 'VERSE UP BIBLE QUIZ 2026').toUpperCase()}</span>
+                  <span className="text-amber-400">★</span>
+                </div>
+
+                {/* Hexagon LEADERBOARD Banner (height ~52px) */}
+                <div className="relative flex items-center justify-center w-full max-w-xl shrink-0">
+                  <div
+                    data-testid="projector-leaderboard-banner"
+                    className="banner-ribbon px-16 py-1.5 w-full text-center flex flex-col items-center justify-center backdrop-blur-md"
+                  >
+                    <h1 className="font-cinzel text-3xl md:text-4xl text-white tracking-widest font-black uppercase drop-shadow-md m-0 p-0 leading-tight">
+                      LEADERBOARD
+                    </h1>
+                  </div>
                 </div>
               </div>
+
+              {/* Gap (4px) */}
+              <div style={{ height: '4px' }} className="w-full shrink-0" />
+
+              {/* Tabs Row (44px) */}
+              <div
+                style={{ height: '44px' }}
+                className="w-full flex items-center justify-center shrink-0 px-12"
+              >
+                <TabBar
+                  levels={state.levels}
+                  activeTab={state.focus}
+                  onTabChange={(tabId) => setQuizFocus(tabId)}
+                />
+              </div>
             </div>
 
-            {/* 3. GAP (4px) */}
-            <div style={{ height: `${PROJECTOR_LAYOUT.gapBannerTabs}px` }} className="w-full shrink-0" />
+            {/* 3. GAP ABOVE PODIUM */}
+            <div style={{ height: `${layout.gapTabsPodium}px` }} className="w-full shrink-0" />
 
-            {/* 4. TABS ROW (44px reserved row, fully visible) */}
+            {/* 4. PODIUM ZONE */}
             <div
-              style={{ height: `${PROJECTOR_LAYOUT.tabsHeight}px` }}
-              className="w-full flex items-center justify-center shrink-0 px-12"
-            >
-              <TabBar
-                levels={state.levels}
-                activeTab={state.focus}
-                onTabChange={(tabId) => setQuizFocus(tabId)}
-              />
-            </div>
-
-            {/* 5. GAP ABOVE PODIUM (12px) */}
-            <div style={{ height: `${PROJECTOR_LAYOUT.gapTabsPodium}px` }} className="w-full shrink-0" />
-
-            {/* 6. PODIUM ZONE (310px) */}
-            <div
-              style={{ height: `${PROJECTOR_LAYOUT.podiumHeight}px` }}
+              style={{ height: `${layout.podiumContainerHeight}px` }}
               className="w-full px-12 flex items-end justify-center shrink-0 overflow-visible"
             >
               {!hasTeams ? (
@@ -274,44 +274,46 @@ export default function ProjectorView() {
                   focus={state.focus}
                   disableAnimation={disableAnimation}
                   isCelebrating={Boolean(state.celebrateWinner)}
-                  podiumHeight={PROJECTOR_LAYOUT.podiumHeight}
+                  podiumHeight={layout.podiumContainerHeight}
+                  layout={layout}
                 />
               )}
             </div>
 
-            {/* 7. GAP (8px) */}
-            <div style={{ height: `${PROJECTOR_LAYOUT.gapPodiumList}px` }} className="w-full shrink-0" />
+            {/* 5. GAP PODIUM TO LIST */}
+            <div style={{ height: `${layout.gapPodiumList}px` }} className="w-full shrink-0" />
 
-            {/* 8. TEAM STANDINGS LIST PANEL (554px) */}
+            {/* 6. TEAM STANDINGS LIST PANEL */}
             <div className="w-full px-8 shrink-0 flex flex-col justify-start min-h-0">
               <section
                 data-testid="rank-list-panel"
-                style={{ height: `${PROJECTOR_LAYOUT.listPanelHeight}px` }}
-                className="curved-sheet w-full px-8 pt-[6px] pb-[6px] flex flex-col justify-start shadow-2xl overflow-hidden shrink-0"
+                style={{ height: `${layout.listPanelHeight}px` }}
+                className="curved-sheet w-full px-8 pt-0 pb-0 flex flex-col justify-start shadow-2xl overflow-hidden shrink-0"
               >
                 <RankList
                   teams={ranked}
                   levels={state.levels}
                   allTeams={state.teams}
-                  rowHeight={PROJECTOR_LAYOUT.rowHeight}
+                  rowHeight={layout.rowHeight}
                   numCols={numCols}
+                  layout={layout}
                 />
               </section>
             </div>
 
-            {/* 9. GAP (8px) */}
-            <div style={{ height: `${PROJECTOR_LAYOUT.gapListVerse}px` }} className="w-full shrink-0" />
+            {/* 7. GAP LIST TO VERSE */}
+            <div style={{ height: `${layout.gapListVerse}px` }} className="w-full shrink-0" />
 
-            {/* 10. BIBLE VERSE BAR (44px) */}
+            {/* 8. BIBLE VERSE BAR */}
             <div
-              style={{ height: `${PROJECTOR_LAYOUT.verseBarHeight}px` }}
+              style={{ height: `${layout.verseBarHeight}px` }}
               className="w-full px-8 flex items-center justify-center shrink-0"
             >
-              <BibleVerseFooter />
+              <BibleVerseFooter layout={layout} />
             </div>
 
-            {/* 11. BOTTOM SPACE (6px) */}
-            <div style={{ height: `${PROJECTOR_LAYOUT.bottomSpace}px` }} className="w-full shrink-0" />
+            {/* 9. BOTTOM MARGIN */}
+            <div style={{ height: `${layout.bottomMargin}px` }} className="w-full shrink-0" />
 
             {/* Animated Confetti Particles for Winner Celebration */}
             <WinnerConfetti active={Boolean(state.celebrateWinner)} />

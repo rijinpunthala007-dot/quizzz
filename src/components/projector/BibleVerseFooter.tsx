@@ -1,11 +1,13 @@
 import { memo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { RankedTeam, Level } from '../../types';
+import type { ProjectorLayout } from './layout';
 
 interface BibleVerseFooterProps {
   teams?: RankedTeam[];
   levels?: Level[];
   focus?: string;
+  layout?: ProjectorLayout;
 }
 
 const BIBLE_VERSES = [
@@ -18,7 +20,7 @@ const BIBLE_VERSES = [
   { text: '“The Lord is my shepherd; I shall not want.”', ref: 'Psalm 23:1' },
 ];
 
-const BibleVerseFooter = memo(function BibleVerseFooter(_props: BibleVerseFooterProps) {
+const BibleVerseFooter = memo(function BibleVerseFooter({ layout }: BibleVerseFooterProps) {
   const [verseIndex, setVerseIndex] = useState(0);
 
   // Cross-fade verses every 12 seconds
@@ -32,10 +34,16 @@ const BibleVerseFooter = memo(function BibleVerseFooter(_props: BibleVerseFooter
   const currentVerse = BIBLE_VERSES[verseIndex];
   const isCredit = currentVerse.ref === 'RJ';
 
+  const height = layout?.verseBarHeight ?? 44;
+  const fontSize = layout?.verseBarFont ?? 26;
+  const s = layout?.s ?? 1;
+  const refFontSize = isCredit ? fontSize : Math.floor(20 * s);
+
   return (
     <div
       data-testid="bible-verse-footer"
-      className="w-full h-[44px] bg-[#1b0b52]/90 border border-amber-400/40 backdrop-blur-md rounded-2xl px-6 flex items-center justify-center text-center shadow-lg select-none overflow-hidden shrink-0"
+      style={{ height: `${height}px` }}
+      className="w-full bg-[#1b0b52]/90 border border-amber-400/40 backdrop-blur-md rounded-2xl px-6 flex items-center justify-center text-center shadow-lg select-none overflow-hidden shrink-0"
     >
       <AnimatePresence mode="wait">
         <motion.div
@@ -48,14 +56,14 @@ const BibleVerseFooter = memo(function BibleVerseFooter(_props: BibleVerseFooter
         >
           <p
             data-testid="footer-scripture-text"
-            className="font-playfair text-[26px] italic text-amber-100 leading-none m-0 p-0 font-medium truncate"
+            style={{ fontSize: `${fontSize}px` }}
+            className="font-playfair italic text-amber-100 leading-none m-0 p-0 font-medium truncate"
           >
             {currentVerse.text}
           </p>
           <span
-            className={`font-outfit font-black text-amber-400 tracking-wider uppercase shrink-0 leading-none ${
-              isCredit ? 'text-[26px]' : 'text-[20px]'
-            }`}
+            style={{ fontSize: `${refFontSize}px` }}
+            className="font-outfit font-black text-amber-400 tracking-wider uppercase shrink-0 leading-none"
           >
             — {currentVerse.ref} —
           </span>

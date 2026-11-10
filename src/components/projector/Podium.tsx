@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import type { RankedTeam, Level, Team } from '../../types';
+import type { ProjectorLayout } from './layout';
 import AnimatedScore from './AnimatedScore';
 import { getInitials } from '../../utils';
 
@@ -12,6 +13,7 @@ interface PodiumProps {
   disableAnimation?: boolean;
   isCelebrating?: boolean;
   podiumHeight?: number;
+  layout?: ProjectorLayout;
 }
 
 const springTransition = {

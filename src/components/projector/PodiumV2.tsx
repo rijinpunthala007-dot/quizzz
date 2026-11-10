@@ -1,6 +1,7 @@
 import { memo, useMemo, useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { RankedTeam, Level, Team } from '../../types';
+import type { ProjectorLayout } from './layout';
 import AnimatedScore from './AnimatedScore';
 import { getInitials, formatScore } from '../../utils';
 import styles from './PodiumV2.module.css';
@@ -13,6 +14,7 @@ interface PodiumProps {
   disableAnimation?: boolean;
   isCelebrating?: boolean;
   podiumHeight?: number;
+  layout?: ProjectorLayout;
 }
 
 const springTransition = {
@@ -315,6 +317,7 @@ const PodiumCard = memo(function PodiumCard({
   isLite,
   fxMode,
   glowSwell,
+  layout,
 }: {
   team: RankedTeam;
   slotRank: 1 | 2 | 3;
@@ -322,9 +325,13 @@ const PodiumCard = memo(function PodiumCard({
   isLite: boolean;
   fxMode: 'off' | 'soft' | 'full';
   glowSwell: boolean;
+  layout?: ProjectorLayout;
 }) {
   const isWinner = slotRank === 1;
   const initials = getInitials(team.name);
+  const s = layout?.s ?? 1;
+
+  const cardHeight = isWinner ? (layout?.card1Height ?? 286) : (layout?.card23Height ?? 250);
 
   // Badge text (e.g. "T-1", "#1", "#2", "#3")
   const badgeText = team.displayRank
@@ -333,8 +340,8 @@ const PodiumCard = memo(function PodiumCard({
 
   // Name fitting: 1st place: max 48px, min 26px; 2nd/3rd: max 38px, min 22px
   const nameContainerRef = useRef<HTMLDivElement>(null);
-  const maxNameSize = isWinner ? 48 : 38;
-  const minNameSize = isWinner ? 26 : 22;
+  const maxNameSize = Math.floor((isWinner ? 48 : 38) * s);
+  const minNameSize = Math.floor((isWinner ? 26 : 22) * s);
   const nameFontSize = useFitPodiumCardName(
     team.name,
     maxNameSize,
@@ -343,13 +350,20 @@ const PodiumCard = memo(function PodiumCard({
   );
 
   // Score fitting: 1st place: max 64px; 2nd/3rd: max 52px; shrink to 70% if wide
-  const maxScoreSize = isWinner ? 64 : 52;
-  const availScoreWidth = isWinner ? 300 : 310;
+  const maxScoreSize = Math.floor((isWinner ? 64 : 52) * s);
+  const availScoreWidth = Math.floor((isWinner ? 300 : 310) * s);
   const scoreFontSize = useFitPodiumScore(
     formatScore(team.focusScore),
     maxScoreSize,
     availScoreWidth
   );
+
+  const ptsFontSize = Math.floor((isWinner ? 22 : 18) * s);
+  const avatarSize = Math.floor((isWinner ? 90 : 76) * s);
+  const initialsFontSize = Math.floor((isWinner ? 30 : 24) * s);
+
+  const avatarRowHeight = Math.floor((isWinner ? 104 : 82) * s);
+  const nameRowHeight = Math.floor((isWinner ? 64 : 60) * s);
 
   // Safety net scaling ref: if natural height > inner height, scale down uniformly
   const innerGridRef = useRef<HTMLDivElement>(null);
@@ -360,7 +374,7 @@ const PodiumCard = memo(function PodiumCard({
     if (!el) return;
 
     const checkScale = () => {
-      const targetHeight = isWinner ? 260 : 224;
+      const targetHeight = cardHeight - 26;
       const actualHeight = el.scrollHeight;
       if (actualHeight > targetHeight && actualHeight > 0) {
         setContentScale(targetHeight / actualHeight);
@@ -378,7 +392,7 @@ const PodiumCard = memo(function PodiumCard({
     return () => {
       if (ro) ro.disconnect();
     };
-  }, [isWinner, team.name, team.focusScore, nameFontSize, scoreFontSize]);
+  }, [cardHeight, team.name, team.focusScore, nameFontSize, scoreFontSize]);
 
   // Card frame styling class
   const cardFrameClass =
@@ -400,6 +414,7 @@ const PodiumCard = memo(function PodiumCard({
       layout={disableAnimation ? false : 'position'}
       transition={springTransition}
       data-testid={`podium-card-${slotRank}`}
+      style={{ height: `${cardHeight}px` }}
       className={`${cardFrameClass} shrink-0 select-none`}
     >
       {/* 1st Place Gold Glow Layer (static, animate opacity only) */}
@@ -432,6 +447,8 @@ const PodiumCard = memo(function PodiumCard({
         style={{
           transform: contentScale < 1 ? `scale(${contentScale})` : undefined,
           transformOrigin: 'top center',
+          gridTemplateRows: `${avatarRowHeight}px ${nameRowHeight}px 1fr`,
+          height: `${cardHeight - 26}px`,
         }}
         className={isWinner ? styles.innerGridFirst : styles.innerGridSecondThird}
       >
@@ -439,30 +456,35 @@ const PodiumCard = memo(function PodiumCard({
         <div
           data-row="avatar"
           data-testid={`podium-avatar-${slotRank}`}
+          style={{ height: `${avatarRowHeight}px` }}
           className={isWinner ? styles.avatarRowFirst : styles.avatarRowSecondThird}
         >
           {/* Avatar Container */}
           <div
-            className={`relative flex items-center justify-center shrink-0 ${
-              isWinner ? 'w-[90px] h-[90px]' : 'w-[76px] h-[76px]'
-            }`}
+            style={{ width: `${avatarSize}px`, height: `${avatarSize}px` }}
+            className="relative flex items-center justify-center shrink-0"
           >
             {/* 1st Place Crown (22px tall, overlapping avatar by 8px, never touching pill) */}
             {isWinner && <WinnerCrown />}
 
             {/* Breathing Gold Halo (Soft & Full) */}
             {isWinner && fxMode !== 'off' && !isLite && (
-              <div data-testid="podium-breathing-halo" className={styles.breathingHalo} />
+              <div
+                data-testid="podium-breathing-halo"
+                style={{ width: `${avatarSize}px`, height: `${avatarSize}px` }}
+                className={styles.breathingHalo}
+              />
             )}
 
             {/* Double Ring Avatar */}
             <div
+              style={{ width: `${avatarSize}px`, height: `${avatarSize}px` }}
               className={`rounded-full flex items-center justify-center ${
                 isWinner
-                  ? 'w-[90px] h-[90px] p-[3.5px] bg-gradient-to-tr from-[#FFE27A] via-[#F5A623] to-[#FFE27A] shadow-xl'
+                  ? 'p-[3.5px] bg-gradient-to-tr from-[#FFE27A] via-[#F5A623] to-[#FFE27A] shadow-xl'
                   : slotRank === 2
-                  ? 'w-[76px] h-[76px] p-[3px] bg-gradient-to-tr from-[#F2F4F8] via-[#FFFFFF] to-[#9AA3B5] shadow-lg'
-                  : 'w-[76px] h-[76px] p-[3px] bg-gradient-to-tr from-[#F0B27A] via-[#EA580C] to-[#B9732F] shadow-lg'
+                  ? 'p-[3px] bg-gradient-to-tr from-[#F2F4F8] via-[#FFFFFF] to-[#9AA3B5] shadow-lg'
+                  : 'p-[3px] bg-gradient-to-tr from-[#F0B27A] via-[#EA580C] to-[#B9732F] shadow-lg'
               }`}
             >
               <div
@@ -475,10 +497,11 @@ const PodiumCard = memo(function PodiumCard({
                 }`}
               >
                 <span
-                  className={`font-cinzel font-black tracking-wider ${
+                  style={{ fontSize: `${initialsFontSize}px` }}
+                  className={`font-cinzel font-black tracking-wider leading-none ${
                     isWinner
-                      ? 'text-3xl text-amber-300'
-                      : 'text-2xl text-white'
+                      ? 'text-amber-300'
+                      : 'text-white'
                   }`}
                 >
                   {initials}
@@ -515,6 +538,7 @@ const PodiumCard = memo(function PodiumCard({
           ref={nameContainerRef}
           data-row="name"
           data-testid={`podium-name-${slotRank}`}
+          style={{ height: `${nameRowHeight}px` }}
           className={isWinner ? styles.nameRowFirst : styles.nameRowSecondThird}
         >
           <h2
@@ -532,7 +556,7 @@ const PodiumCard = memo(function PodiumCard({
           </h2>
         </div>
 
-        {/* ROW 3: Score Row (76px on 1st, 66px on 2nd/3rd) */}
+        {/* ROW 3: Score Row */}
         <div
           data-row="score"
           data-testid={`podium-score-${slotRank}`}
@@ -545,7 +569,10 @@ const PodiumCard = memo(function PodiumCard({
               className={isWinner ? styles.scoreNumberFirst : styles.scoreNumberSecondThird}
               style={{ fontSize: `${scoreFontSize}px` }}
             />
-            <span className={isWinner ? styles.scorePtsFirst : styles.scorePtsSecondThird}>
+            <span
+              style={{ fontSize: `${ptsFontSize}px` }}
+              className={isWinner ? styles.scorePtsFirst : styles.scorePtsSecondThird}
+            >
               PTS
             </span>
           </div>
@@ -564,6 +591,7 @@ const PodiumV2 = memo(function PodiumV2({
   focus,
   disableAnimation = false,
   podiumHeight,
+  layout,
 }: PodiumProps) {
   // Read ?fx=off | soft | full from URL (default soft)
   const fxMode = useMemo<'off' | 'soft' | 'full'>(() => {
@@ -633,22 +661,34 @@ const PodiumV2 = memo(function PodiumV2({
     { team: third, slotRank: 3 as const, position: 'right' as const },
   ];
 
+  const actualContainerHeight = podiumHeight ?? layout?.podiumContainerHeight ?? 310;
+  const card1H = layout?.card1Height ?? 286;
+  const card23H = layout?.card23Height ?? 250;
+
   return (
     <div
       data-testid="podium-container"
       style={{
-        height: podiumHeight ? `${podiumHeight}px` : undefined,
+        height: `${actualContainerHeight}px`,
         contain: 'layout style',
       }}
-      className={`w-full h-[310px] flex items-end justify-center select-none overflow-visible relative gap-10 ${styles.podiumRoot}`}
+      className={`w-full flex items-end justify-center select-none overflow-visible relative gap-10 ${styles.podiumRoot}`}
       data-hidden={isHidden ? 'true' : 'false'}
     >
-      {/* Soft light cone behind center winner card - strictly bounded within wrapper height (310px) */}
-      {first && !isLite && <div className={styles.lightCone} />}
+      {/* Soft light cone behind center winner card */}
+      {first && !isLite && (
+        <div
+          style={{ height: `${actualContainerHeight}px` }}
+          className={styles.lightCone}
+        />
+      )}
 
       {/* 6 Twinkling gold stars around the center winner card */}
       {first && !isLite && !disableAnimation && (
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-[470px] h-[286px] pointer-events-none z-15">
+        <div
+          style={{ height: `${card1H}px` }}
+          className="absolute left-1/2 -translate-x-1/2 bottom-0 w-[470px] pointer-events-none z-15"
+        >
           {WINNER_STARS.map((star, idx) => (
             <div
               key={idx}
@@ -686,9 +726,11 @@ const PodiumV2 = memo(function PodiumV2({
           return (
             <div
               key={position}
-              className={`shrink-0 ${
-                slotRank === 1 ? 'w-[470px] h-[286px]' : 'w-[400px] h-[250px]'
-              }`}
+              style={{
+                width: slotRank === 1 ? '470px' : '400px',
+                height: `${slotRank === 1 ? card1H : card23H}px`,
+              }}
+              className="shrink-0"
             />
           );
         }
@@ -702,6 +744,7 @@ const PodiumV2 = memo(function PodiumV2({
             isLite={isLite}
             fxMode={fxMode}
             glowSwell={glowSwell && slotRank === 1}
+            layout={layout}
           />
         );
       })}

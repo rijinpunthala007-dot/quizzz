@@ -22,7 +22,7 @@
   left: 50%;
   transform: translateX(-50%);
   width: 1600px;
-  height: 1100px;
+  height: calc(var(--stage-h, 1080px) + 20px);
   pointer-events: none;
   z-index: 1;
 
@@ -114,19 +114,19 @@
     opacity: 0.7;
   }
   35% {
-    transform: translateY(-380px) translateX(var(--fx-sway));
+    transform: translateY(calc(var(--stage-h, 1080px) * -0.35)) translateX(var(--fx-sway));
   }
   50% {
     opacity: 0.6;
   }
   70% {
-    transform: translateY(-750px) translateX(calc(var(--fx-sway) * -0.75));
+    transform: translateY(calc(var(--stage-h, 1080px) * -0.69)) translateX(calc(var(--fx-sway) * -0.75));
   }
   88% {
     opacity: 0.45;
   }
   100% {
-    transform: translateY(-1120px) translateX(var(--fx-sway));
+    transform: translateY(calc(-1 * (var(--stage-h, 1080px) + 40px))) translateX(var(--fx-sway));
     opacity: 0;
   }
 }
@@ -196,9 +196,9 @@
 .archLeft {
   position: absolute;
   left: 36px;
-  top: 135px;
-  width: 180px;
-  height: 330px;
+  top: calc(135px + 45px * var(--t, 0));
+  width: calc(180px * (1 + 0.2 * var(--t, 0)));
+  height: calc(330px + 90px * var(--t, 0));
   pointer-events: none;
   z-index: 1;
   opacity: 0.07;
@@ -208,9 +208,9 @@
 .archRight {
   position: absolute;
   right: 36px;
-  top: 135px;
-  width: 180px;
-  height: 330px;
+  top: calc(135px + 45px * var(--t, 0));
+  width: calc(180px * (1 + 0.2 * var(--t, 0)));
+  height: calc(330px + 90px * var(--t, 0));
   pointer-events: none;
   z-index: 1;
   opacity: 0.07;
