@@ -1,0 +1,124 @@
+/* ==========================================================================
+   AdminShortcut Scoped Styles (Prefix: adm2-)
+   Hidden operator entry point to /admin from Projector View
+   ========================================================================== */
+
+/* Invisible 96x96px Hotspot in top-left corner */
+.adm2Hotspot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 96px;
+  height: 96px;
+  z-index: 9998;
+  pointer-events: auto;
+  background: transparent;
+  cursor: default;
+}
+
+/* Small 44px pill button at top-left corner (16px from edges) */
+.adm2Button {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  height: 44px;
+  padding: 0 18px;
+  background-color: #FFC21A;
+  color: #2A1A00;
+  border: 1.5px solid #C78E00;
+  border-radius: 9999px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  z-index: 9999;
+  user-select: none;
+  outline: none;
+  line-height: 1;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.adm2ButtonVisible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.adm2Button:hover {
+  background-color: #FFCA33;
+  transform: scale(1.02);
+}
+
+.adm2Button:active {
+  background-color: #E6AC00;
+  transform: scale(0.98);
+}
+
+/* Instant transitions for prefers-reduced-motion and ?lite=1 */
+.adm2Instant {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adm2Button {
+    transition: none !important;
+  }
+}
+
+/* Non-blocking toast when popups are blocked */
+.adm2Toast {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  background-color: rgba(30, 20, 50, 0.96);
+  border: 1.5px solid rgba(255, 194, 26, 0.6);
+  color: #FFFFFF;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+  user-select: none;
+  animation: adm2ToastFadeIn 150ms ease-out forwards;
+}
+
+@keyframes adm2ToastFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.adm2ToastLink {
+  color: #FFC21A;
+  text-decoration: underline;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.adm2ToastLink:hover {
+  color: #FFE082;
+}

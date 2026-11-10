@@ -12,6 +12,7 @@ import EmptyState from './EmptyState';
 import WinnerConfetti from './WinnerConfetti';
 import RevealStage from '../reveal/RevealStage';
 import WinnersCelebrationStage from '../celebrate/WinnersCelebrationStage';
+import AdminShortcut from './AdminShortcut';
 import { computeStageH, layoutFor, PROJECTOR_LAYOUT } from './layout';
 
 export { PROJECTOR_LAYOUT, layoutFor, computeStageH };
@@ -329,6 +330,9 @@ export default function ProjectorView() {
           title="Sync connection lost"
         />
       )}
+
+      {/* Hidden operator shortcut to open admin */}
+      <AdminShortcut />
     </div>
   );
 }
