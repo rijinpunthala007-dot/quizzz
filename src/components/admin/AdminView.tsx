@@ -60,6 +60,14 @@ export default function AdminView() {
     onConfirm: () => void;
   } | null>(null);
 
+  const [selectedTeamIds, setSelectedTeamIds] = useState<Set<string>>(new Set());
+  const [eliminateModal, setEliminateModal] = useState<{
+    levelId: string;
+    levelName: string;
+    count: number;
+    mode: 'red' | 'out';
+  } | null>(null);
+
   const showSavedIndicator = useCallback(() => {
     setSaved(true);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -186,11 +194,33 @@ export default function AdminView() {
     }));
   };
 
+  const latestLevelName = useMemo(() => {
+    if (state.focus !== 'all') {
+      const foc = state.levels.find((l) => l.id === state.focus);
+      if (foc) return foc.name;
+    }
+    for (let i = state.levels.length - 1; i >= 0; i--) {
+      const lvl = state.levels[i];
+      const hasScores = state.teams.some((t) => t.scores[lvl.id] !== undefined && t.scores[lvl.id] !== 0);
+      if (hasScores) return lvl.name;
+    }
+    return state.levels[state.levels.length - 1]?.name || 'Manual';
+  }, [state.focus, state.levels, state.teams]);
+
   const handleToggleOut = (teamId: string) => {
     updateStateImmediate((s) => ({
       ...s,
       teams: s.teams.map((t) =>
         t.id === teamId ? { ...t, out: t.out ? '' : 'Manual' } : t
+      ),
+    }));
+  };
+
+  const handleToggleMarked = (teamId: string) => {
+    updateStateImmediate((s) => ({
+      ...s,
+      teams: s.teams.map((t) =>
+        t.id === teamId ? { ...t, marked: t.marked ? '' : latestLevelName } : t
       ),
     }));
   };
@@ -227,34 +257,12 @@ export default function AdminView() {
   const handleEliminateLowest = (levelId: string) => {
     const level = state.levels.find((l) => l.id === levelId);
     if (!level) return;
-    const input = prompt(`How many groups to eliminate after ${level.name}?`);
-    if (!input) return;
-    const n = parseInt(input, 10);
-    if (isNaN(n) || n <= 0) return;
-
-    // Sort active teams by total ascending
-    const activeTeams = state.teams
-      .filter((t) => !t.out)
-      .map((t) => ({ ...t, total: getTeamTotal(t, state.levels) }))
-      .sort((a, b) => a.total - b.total);
-
-    const toEliminate = activeTeams.slice(0, n);
-    if (toEliminate.length === 0) return;
-
-    setConfirmDialog({
-      title: `Eliminate ${toEliminate.length} group(s) after ${level.name}?`,
-      message: 'The following groups will be marked as eliminated:',
-      details: toEliminate.map((t) => `${t.name} (Total: ${formatScore(t.total)})`),
-      onConfirm: () => {
-        const ids = new Set(toEliminate.map((t) => t.id));
-        updateStateImmediate((s) => ({
-          ...s,
-          teams: s.teams.map((t) =>
-            ids.has(t.id) ? { ...t, out: level.name } : t
-          ),
-        }));
-        setConfirmDialog(null);
-      },
+    const savedMode = (typeof localStorage !== 'undefined' ? localStorage.getItem('quiz-eliminate-mode') : null) as 'red' | 'out' | null;
+    setEliminateModal({
+      levelId: level.id,
+      levelName: level.name,
+      count: 3,
+      mode: savedMode === 'out' ? 'out' : 'red',
     });
   };
 
@@ -461,6 +469,22 @@ export default function AdminView() {
               <span>Sound</span>
             </label>
 
+            {/* Elimination Sound Toggle */}
+            <label className="flex items-center gap-1.5 cursor-pointer text-xs text-[#9aa7bd] hover:text-[#f4ecd8] select-none mr-1 font-medium" title="Play a soft low thud when a group is marked red on the board">
+              <input
+                type="checkbox"
+                checked={Boolean(state.eliminationSound)}
+                onChange={() => {
+                  updateStateImmediate((s) => ({
+                    ...s,
+                    eliminationSound: !s.eliminationSound,
+                  }));
+                }}
+                className="w-3.5 h-3.5 accent-rose-500 rounded cursor-pointer"
+              />
+              <span>Elim Sound</span>
+            </label>
+
             {/* Winners Page Action Buttons */}
             {!state.celebrateWinner ? (
               <button
@@ -566,6 +590,165 @@ export default function AdminView() {
         </div>
       )}
 
+      {/* Elimination Modal with Mode Selector and Cut-line Warning */}
+      {eliminateModal && (() => {
+        const activeTeams = state.teams
+          .filter((t) => !t.out)
+          .map((t) => ({ ...t, total: getTeamTotal(t, state.levels) }))
+          .sort((a, b) => a.total - b.total);
+
+        const clampedCount = Math.max(1, Math.min(eliminateModal.count, activeTeams.length || 1));
+        const toEliminate = activeTeams.slice(0, clampedCount);
+        const cutIndex = clampedCount;
+        const isCutTie =
+          activeTeams.length > cutIndex &&
+          toEliminate.length > 0 &&
+          toEliminate[toEliminate.length - 1].total === activeTeams[cutIndex].total;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+            <div className="bg-[#111b2e] border border-[#243049] rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+              <div>
+                <h3
+                  className="text-lg font-bold text-[#f4ecd8]"
+                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                >
+                  Eliminate Lowest Groups after {eliminateModal.levelName}
+                </h3>
+                <p className="text-xs text-[#9aa7bd] mt-1">
+                  Choose whether to mark groups red on the board or remove them completely.
+                </p>
+              </div>
+
+              {/* Mode selector */}
+              <div className="bg-black/30 p-3 rounded-xl border border-white/5 space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-[#9aa7bd] block mb-1">
+                  Elimination Mode
+                </label>
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="eliminate-mode"
+                    value="red"
+                    checked={eliminateModal.mode === 'red'}
+                    onChange={() => {
+                      setEliminateModal({ ...eliminateModal, mode: 'red' });
+                      try { localStorage.setItem('quiz-eliminate-mode', 'red'); } catch {}
+                    }}
+                    className="mt-0.5 accent-rose-500 cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-rose-300 block">Mark red (stays on the board)</span>
+                    <span className="text-xs text-[#9aa7bd]">Row turns red with an OUT tag, keeping its rank and position</span>
+                  </div>
+                </label>
+                <label className="flex items-start gap-2.5 cursor-pointer pt-1 border-t border-white/5">
+                  <input
+                    type="radio"
+                    name="eliminate-mode"
+                    value="out"
+                    checked={eliminateModal.mode === 'out'}
+                    onChange={() => {
+                      setEliminateModal({ ...eliminateModal, mode: 'out' });
+                      try { localStorage.setItem('quiz-eliminate-mode', 'out'); } catch {}
+                    }}
+                    className="mt-0.5 accent-[#f2c94c] cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-[#f4ecd8] block">Remove from board (current behaviour)</span>
+                    <span className="text-xs text-[#9aa7bd]">Removes group from standings and lists in the footer</span>
+                  </div>
+                </label>
+              </div>
+
+              {/* Number N */}
+              <div>
+                <label className="text-xs font-semibold text-[#9aa7bd] uppercase tracking-wider block mb-1.5">
+                  Number of lowest groups to eliminate (N)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={Math.max(1, activeTeams.length)}
+                  value={eliminateModal.count}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setEliminateModal({ ...eliminateModal, count: isNaN(val) ? 1 : val });
+                  }}
+                  className="admin-input w-32 text-sm font-mono font-bold"
+                />
+              </div>
+
+              {/* Tie warning */}
+              {isCutTie && (
+                <div className="bg-amber-500/15 border border-amber-400/40 rounded-xl p-3 text-xs text-amber-200 flex items-start gap-2">
+                  <span className="text-base leading-none">⚠️</span>
+                  <div>
+                    <strong className="font-bold block">Tie detected at cut line!</strong>
+                    Multiple groups share the total score of {formatScore(toEliminate[toEliminate.length - 1].total)} pts. Both the group at rank #{clampedCount} and #{clampedCount + 1} have the same score.
+                  </div>
+                </div>
+              )}
+
+              {/* Groups preview */}
+              <div>
+                <label className="text-xs font-semibold text-[#9aa7bd] uppercase tracking-wider block mb-1">
+                  Groups about to be {eliminateModal.mode === 'red' ? 'marked red' : 'eliminated'} ({toEliminate.length})
+                </label>
+                <ul className="text-[#9aa7bd] text-xs max-h-40 overflow-y-auto space-y-1 bg-black/20 p-2.5 rounded-lg border border-white/5">
+                  {toEliminate.map((t) => (
+                    <li key={t.id} className="flex items-center justify-between py-0.5 border-b border-white/[0.04] last:border-0">
+                      <span className="font-medium text-white">{t.name}</span>
+                      <span className="font-mono text-amber-300 font-bold">{formatScore(t.total)} pts</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEliminateModal(null)}
+                  className="px-4 py-2 text-sm text-[#9aa7bd] hover:text-[#f4ecd8] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ids = new Set(toEliminate.map((t) => t.id));
+                    if (eliminateModal.mode === 'red') {
+                      updateStateImmediate((s) => ({
+                        ...s,
+                        teams: s.teams.map((t) =>
+                          ids.has(t.id) ? { ...t, marked: eliminateModal.levelName } : t
+                        ),
+                      }));
+                    } else {
+                      updateStateImmediate((s) => ({
+                        ...s,
+                        teams: s.teams.map((t) =>
+                          ids.has(t.id) ? { ...t, out: eliminateModal.levelName } : t
+                        ),
+                      }));
+                    }
+                    setEliminateModal(null);
+                  }}
+                  className={`px-5 py-2 text-sm font-bold rounded-lg transition-all shadow-md ${
+                    eliminateModal.mode === 'red'
+                      ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                      : 'bg-[#f2c94c] hover:bg-[#f4d58d] text-[#0b1322]'
+                  }`}
+                >
+                  {eliminateModal.mode === 'red' ? 'Mark Red' : 'Eliminate'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Main Container */}
       <main className="max-w-6xl mx-auto px-4 md:px-6 pt-5 space-y-5">
         {/* Quick View Controls Bar */}
@@ -652,6 +835,22 @@ export default function AdminView() {
                       className="w-4 h-4 accent-[#f2c94c] rounded cursor-pointer"
                     />
                     <span>Sound</span>
+                  </label>
+
+                  {/* Elimination Sound Toggle */}
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs text-[#9aa7bd] hover:text-[#f4ecd8] select-none font-medium bg-black/30 px-3 py-2 rounded-xl border border-white/10" title="Play a soft low thud when a group is marked red on the board">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(state.eliminationSound)}
+                      onChange={() => {
+                        updateStateImmediate((s) => ({
+                          ...s,
+                          eliminationSound: !s.eliminationSound,
+                        }));
+                      }}
+                      className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
+                    />
+                    <span>Elim Sound</span>
                   </label>
 
                   {!state.celebrateWinner ? (
@@ -825,6 +1024,33 @@ export default function AdminView() {
                 >
                   {isCompact ? 'Compact View: ON' : 'Compact View: OFF'}
                 </button>
+
+                {/* Mark Selected Red Button */}
+                <button
+                  type="button"
+                  disabled={selectedTeamIds.size === 0}
+                  onClick={() => {
+                    updateStateImmediate((s) => ({
+                      ...s,
+                      teams: s.teams.map((t) =>
+                        selectedTeamIds.has(t.id) ? { ...t, marked: latestLevelName } : t
+                      ),
+                    }));
+                    setSelectedTeamIds(new Set());
+                  }}
+                  className={`text-xs px-2.5 py-1 rounded border transition-all font-semibold ${
+                    selectedTeamIds.size > 0
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30 cursor-pointer shadow-sm'
+                      : 'bg-transparent text-[#9aa7bd]/40 border-white/5 cursor-not-allowed'
+                  }`}
+                  title={
+                    selectedTeamIds.size > 0
+                      ? `Apply red mark to ${selectedTeamIds.size} selected group(s)`
+                      : 'Select groups below using checkboxes to mark them red'
+                  }
+                >
+                  Mark Selected Red {selectedTeamIds.size > 0 ? `(${selectedTeamIds.size})` : ''}
+                </button>
               </div>
 
               {/* Quick Inline Group Add */}
@@ -854,6 +1080,21 @@ export default function AdminView() {
                 <table className="w-full text-sm border-collapse">
                   <thead className="sticky top-0 z-30 bg-[#161f36] text-[11px] uppercase tracking-wider text-[#9aa7bd] border-b border-[#243049] shadow-md">
                     <tr>
+                      <th className="text-center py-2.5 px-1 w-8">
+                        <input
+                          type="checkbox"
+                          checked={displayedTeams.length > 0 && displayedTeams.every((t) => selectedTeamIds.has(t.id))}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedTeamIds(new Set(displayedTeams.map((t) => t.id)));
+                            } else {
+                              setSelectedTeamIds(new Set());
+                            }
+                          }}
+                          className="w-3.5 h-3.5 accent-[#f2c94c] cursor-pointer rounded"
+                          title="Select all displayed groups"
+                        />
+                      </th>
                       <th className="text-center py-2.5 px-2 w-12 font-bold text-[#f2c94c]">
                         #
                       </th>
@@ -874,6 +1115,9 @@ export default function AdminView() {
                       <th className="text-center py-2.5 px-2 w-14" title="Mark eliminated">
                         Out
                       </th>
+                      <th className="text-center py-2.5 px-2 w-14" title="Mark red (stays on board)">
+                        Red
+                      </th>
                       <th className="text-center py-2.5 px-2 w-12" title="Delete group">
                         Del
                       </th>
@@ -882,6 +1126,7 @@ export default function AdminView() {
                   <tbody>
                     {displayedTeams.map((team, teamIndex) => {
                       const isOut = Boolean(team.out);
+                      const isMarked = Boolean(team.marked);
                       const rankInfo = team.rankInfo;
                       const rank = rankInfo?.rank;
 
@@ -891,9 +1136,27 @@ export default function AdminView() {
                           className={`
                             border-b border-white/[0.04] transition-colors
                             ${teamIndex % 2 === 1 ? 'bg-white/[0.015]' : 'bg-transparent'}
-                            ${isOut ? 'opacity-40 bg-red-950/10' : 'hover:bg-white/[0.03]'}
+                            ${isOut ? 'opacity-40 bg-red-950/10' : isMarked ? 'bg-rose-950/20 hover:bg-rose-950/30' : 'hover:bg-white/[0.03]'}
                           `}
                         >
+                          {/* Selection Checkbox */}
+                          <td className={`px-1 text-center ${isCompact ? 'py-1' : 'py-2'}`}>
+                            <input
+                              type="checkbox"
+                              checked={selectedTeamIds.has(team.id)}
+                              onChange={() => {
+                                setSelectedTeamIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(team.id)) next.delete(team.id);
+                                  else next.add(team.id);
+                                  return next;
+                                });
+                              }}
+                              className="w-3.5 h-3.5 accent-[#f2c94c] cursor-pointer rounded"
+                              title="Select group"
+                            />
+                          </td>
+
                           {/* Rank Badge */}
                           <td className={`py-2 px-1 text-center font-mono ${isCompact ? 'py-1' : 'py-2'}`}>
                             {isOut ? (
@@ -945,6 +1208,11 @@ export default function AdminView() {
                                     Eliminated ({team.out})
                                   </span>
                                 )}
+                                {!isOut && isMarked && (
+                                  <span className="text-[10px] text-rose-400 block mt-0.5 italic font-medium">
+                                    Marked red ({team.marked})
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -979,6 +1247,17 @@ export default function AdminView() {
                               onChange={() => handleToggleOut(team.id)}
                               className="w-4 h-4 accent-[#f2c94c] cursor-pointer rounded"
                               title={isOut ? 'Mark as active' : 'Mark as eliminated'}
+                            />
+                          </td>
+
+                          {/* Red Checkbox */}
+                          <td className={`px-2 text-center ${isCompact ? 'py-1' : 'py-2'}`}>
+                            <input
+                              type="checkbox"
+                              checked={isMarked}
+                              onChange={() => handleToggleMarked(team.id)}
+                              className="w-4 h-4 accent-rose-500 cursor-pointer rounded"
+                              title={team.marked ? `Marked red (${team.marked}). Click to unmark.` : 'Mark red (stays on board)'}
                             />
                           </td>
 
@@ -1357,6 +1636,25 @@ export default function AdminView() {
               className="admin-btn-outline"
             >
               Bring Back All Eliminated Groups
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmDialog({
+                  title: 'Clear all red marks?',
+                  message: 'All red marks will be removed from all groups. They will return to their normal appearance on the board.',
+                  onConfirm: () => {
+                    updateStateImmediate((s) => ({
+                      ...s,
+                      teams: s.teams.map((t) => ({ ...t, marked: '' })),
+                    }));
+                    setConfirmDialog(null);
+                  },
+                });
+              }}
+              className="admin-btn-outline text-rose-300 border-rose-400/30 hover:bg-rose-400/10 hover:border-rose-400"
+            >
+              Clear All Red Marks
             </button>
             <button
               type="button"

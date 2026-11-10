@@ -26,6 +26,41 @@ export interface RowAnimationEvent {
   timestamp: number;
 }
 
+export interface EliminationEvent {
+  delay: number;
+  isLast: boolean;
+  timestamp: number;
+}
+
+function playEliminationThud() {
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(120, now);
+    osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
+
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.28);
+    osc.onended = () => {
+      ctx.close().catch(() => {});
+    };
+  } catch {
+    // Autoplay policy or unavailable
+  }
+}
+
 const springTransition = {
   type: 'spring' as const,
   stiffness: 120,
@@ -128,7 +163,9 @@ interface StadiumRowProps {
   allZero: boolean;
   baseNameSize: number;
   animationEvent?: RowAnimationEvent;
+  eliminationEvent?: EliminationEvent;
   disableAnimation: boolean;
+  soundEnabled?: boolean;
   wasOnPodium?: boolean;
   layout?: ProjectorLayout;
 }
@@ -139,12 +176,32 @@ const StadiumRow = memo(function StadiumRow({
   allZero,
   baseNameSize,
   animationEvent,
+  eliminationEvent,
   disableAnimation,
+  soundEnabled,
   wasOnPodium,
   layout,
 }: StadiumRowProps) {
   const movement = getRankMovement(team.rank, team.previousRank);
   const s = layout?.s ?? 1;
+
+  const isMarked = Boolean(team.marked);
+  const hasElimAnim = Boolean(eliminationEvent && !disableAnimation);
+  const delay = eliminationEvent?.delay ?? 0;
+  const isLast = eliminationEvent?.isLast ?? true;
+  const stampAnimClass = isLast ? styles.list2StampAnimLong : styles.list2StampAnimShort;
+  const tagFadeDelay = delay + 800 + (isLast ? 1300 : 350);
+
+  // Audio thud triggered when stamp slams in (delay + 800ms)
+  useEffect(() => {
+    if (!hasElimAnim || !soundEnabled) return;
+    const timer = setTimeout(() => {
+      if (!document.hidden) {
+        playEliminationThud();
+      }
+    }, delay + 800);
+    return () => clearTimeout(timer);
+  }, [hasElimAnim, delay, eliminationEvent?.timestamp, soundEnabled]);
 
   // Format badge text: ties as "T-11", all-zero or zero score as "—"
   const isZeroScore = allZero || (team.focusScore || 0) === 0;
@@ -168,6 +225,11 @@ const StadiumRow = memo(function StadiumRow({
   const scoreFontSize = Math.floor(46 * s);
   const ptsFontSize = Math.floor(20 * s);
   const chipFontSize = Math.floor(22 * s);
+  const tagHeight = Math.floor(36 * s);
+  const tagFontSize = Math.floor(22 * s);
+  const tagMinWidth = Math.floor(96 * s);
+  const tagGap = Math.floor(12 * s);
+  const stampFontSize = Math.floor(56 * s);
 
   return (
     <motion.article
@@ -194,21 +256,60 @@ const StadiumRow = memo(function StadiumRow({
           height: `${rowHeight}px`,
           padding: `${Math.floor(6 * s)}px ${Math.floor(16 * s)}px`,
           gap: `${Math.floor(12 * s)}px`,
+          ...(hasElimAnim ? { animationDelay: `${delay}ms` } : {}),
         } as React.CSSProperties
       }
       className={`${styles.list2Row} ${
-        animationEvent ? styles.list2RowOverflow : ''
+        isMarked && !hasElimAnim ? styles.list2RowMarked : ''
+      } ${
+        hasElimAnim ? styles.list2Pulse : ''
+      } ${
+        animationEvent || hasElimAnim ? styles.list2RowOverflow : ''
       } ${
         animationEvent?.scoreDiff && animationEvent.scoreDiff < 0 && animationEvent.allowChipsAndGlow
           ? styles.list2RowDim
           : ''
       }`}
     >
-      {/* 1. Rank: fixed width (72px) with vertical rolling number on rank change */}
+      {/* Live elimination wipe layer */}
+      {hasElimAnim && (
+        <div
+          className={styles.list2WipeLayer}
+          style={{ animationDelay: `${delay + 100}ms` }}
+        />
+      )}
+
+      {/* Live elimination stamp slam overlay */}
+      {hasElimAnim && (
+        <div className={styles.list2StampOverlay}>
+          <div
+            className={`${styles.list2Stamp} ${stampAnimClass}`}
+            style={{
+              fontSize: `${stampFontSize}px`,
+              animationDelay: `${delay + 800}ms`,
+            }}
+          >
+            ELIMINATED
+            <div
+              className={styles.list2StampRing}
+              style={{ animationDelay: `${delay + 800}ms` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 1. Rank: fixed width with vertical rolling number on rank change */}
       <div
         data-testid={`rank-badge-${team.rank}`}
-        style={{ width: `${rankBadgeWidth}px`, fontSize: `${rankBadgeFontSize}px` }}
-        className="shrink-0 font-outfit font-bold text-indigo-950 tracking-tight leading-none text-center flex items-center justify-center relative overflow-hidden h-full"
+        style={{
+          width: `${rankBadgeWidth}px`,
+          fontSize: `${rankBadgeFontSize}px`,
+          zIndex: 5,
+          ...(hasElimAnim ? { animationDelay: `${delay + 450}ms` } : {}),
+        }}
+        className={`shrink-0 font-outfit font-bold tracking-tight leading-none text-center flex items-center justify-center relative overflow-hidden h-full ${
+          isMarked && !hasElimAnim ? styles.list2RowMarkedText : 'text-indigo-950'
+        } ${hasElimAnim ? `${styles.list2RowMarkedText} ${styles.list2CrossfadeIn}` : ''}`}
       >
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.span
@@ -232,8 +333,8 @@ const StadiumRow = memo(function StadiumRow({
         </AnimatePresence>
       </div>
 
-      {/* Rank-change Indicator (▲3 green / ▼2 muted) */}
-      {animationEvent?.rankDiff && animationEvent.rankDiff !== 0 ? (
+      {/* Rank-change Indicator (hidden if marked) */}
+      {!isMarked && animationEvent?.rankDiff && animationEvent.rankDiff !== 0 ? (
         <div
           key={`rank-ind-${animationEvent.timestamp}`}
           data-testid={`rank-indicator-${team.rank}`}
@@ -246,14 +347,29 @@ const StadiumRow = memo(function StadiumRow({
         </div>
       ) : null}
 
-      {/* 2. Avatar: fixed (54px) or scaled */}
-      <Avatar name={team.name} id={team.id} size={avatarSize} fontSize={avatarFontSize} />
+      {/* 2. Avatar: fixed or scaled, with dim overlay when marked */}
+      <div className="relative shrink-0" style={{ width: avatarSize, height: avatarSize, zIndex: 5 }}>
+        <Avatar name={team.name} id={team.id} size={avatarSize} fontSize={avatarFontSize} />
+        {isMarked && (
+          <div
+            className={`${styles.list2AvatarDimOverlay} ${hasElimAnim ? styles.list2CrossfadeIn : ''}`}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              backgroundColor: 'rgba(100, 100, 100, 0.55)',
+              pointerEvents: 'none',
+              ...(hasElimAnim ? { animationDelay: `${delay + 450}ms` } : {}),
+            }}
+          />
+        )}
+      </div>
 
       {/* 3. NAME BLOCK: flex: 1 1 0%, minWidth: 0, takes ALL the remaining width */}
       <div
         data-testid={`row-name-block-${team.rank}`}
-        className="flex flex-col justify-center leading-tight overflow-hidden h-full"
-        style={{ flex: '1 1 0%', minWidth: 0 }}
+        className="flex flex-col justify-center leading-tight overflow-hidden h-full relative"
+        style={{ flex: '1 1 0%', minWidth: 0, zIndex: 5 }}
       >
         <div
           ref={nameContainerRef}
@@ -263,7 +379,9 @@ const StadiumRow = memo(function StadiumRow({
           <h3
             ref={nameTextRef}
             data-testid={`row-name-text-${team.rank}`}
-            className="font-outfit font-bold text-indigo-950 tracking-wide"
+            className={`font-outfit font-bold tracking-wide ${
+              isMarked && !hasElimAnim ? styles.list2RowMarkedText : 'text-indigo-950'
+            } ${hasElimAnim ? `${styles.list2RowMarkedText} ${styles.list2CrossfadeIn}` : ''}`}
             style={{
               fontSize: `${nameStyle.fontSize}px`,
               letterSpacing: nameStyle.letterSpacing,
@@ -274,6 +392,7 @@ const StadiumRow = memo(function StadiumRow({
               hyphens: 'none',
               margin: 0,
               padding: 0,
+              ...(hasElimAnim ? { animationDelay: `${delay + 450}ms` } : {}),
             }}
           >
             {team.name.split(' ').map((word, wIdx, arr) => (
@@ -297,18 +416,35 @@ const StadiumRow = memo(function StadiumRow({
         </div>
       </div>
 
-      {/* 4. Score + PTS: width: auto, flex: 0 0 auto, only as wide as its content */}
+      {/* Small Permanent OUT Tag */}
+      {isMarked && (
+        <div
+          data-testid={`row-out-tag-${team.rank}`}
+          className={`${styles.list2OutTag} ${hasElimAnim ? styles.list2TagFadeIn : ''}`}
+          style={{
+            height: `${tagHeight}px`,
+            minWidth: `${tagMinWidth}px`,
+            fontSize: `${tagFontSize}px`,
+            marginLeft: `${tagGap}px`,
+            ...(hasElimAnim ? { animationDelay: `${tagFadeDelay}ms` } : {}),
+          }}
+        >
+          OUT
+        </div>
+      )}
+
+      {/* 4. Score + PTS */}
       <div
         data-testid={`row-score-zone-${team.rank}`}
         className="flex items-baseline gap-1.5 shrink-0 pl-1 relative"
-        style={{ flex: '0 0 auto', width: 'auto' }}
+        style={{ flex: '0 0 auto', width: 'auto', zIndex: 5 }}
       >
-        {movement && movement.isPositive && !animationEvent && (
+        {!isMarked && movement && movement.isPositive && !animationEvent && (
           <span className="text-emerald-700 font-bold text-sm mr-1" title={`Moved up ${movement.diff}`}>
             ▲
           </span>
         )}
-        {movement && !movement.isPositive && !animationEvent && (
+        {!isMarked && movement && !movement.isPositive && !animationEvent && (
           <span className="text-rose-600 font-bold text-sm mr-1" title={`Moved down ${movement.diff}`}>
             ▼
           </span>
@@ -318,19 +454,29 @@ const StadiumRow = memo(function StadiumRow({
           duration={700}
           delay={animationEvent?.delay ?? 0}
           disableAnimation={disableAnimation}
-          className="font-outfit font-extrabold text-indigo-950 tabular-nums drop-shadow-sm leading-none"
-          style={{ fontSize: `${scoreFontSize}px` }}
+          className={`font-outfit font-extrabold tabular-nums drop-shadow-sm leading-none ${
+            isMarked && !hasElimAnim ? styles.list2RowMarkedText : 'text-indigo-950'
+          } ${hasElimAnim ? `${styles.list2RowMarkedText} ${styles.list2CrossfadeIn}` : ''}`}
+          style={{
+            fontSize: `${scoreFontSize}px`,
+            ...(hasElimAnim ? { animationDelay: `${delay + 450}ms` } : {}),
+          }}
         />
         <span
-          style={{ fontSize: `${ptsFontSize}px` }}
-          className="font-outfit font-bold text-indigo-800/80 tracking-wider uppercase leading-none"
+          style={{
+            fontSize: `${ptsFontSize}px`,
+            ...(hasElimAnim ? { animationDelay: `${delay + 450}ms` } : {}),
+          }}
+          className={`font-outfit font-bold tracking-wider uppercase leading-none ${
+            isMarked && !hasElimAnim ? styles.list2RowMarkedPts : 'text-indigo-800/80'
+          } ${hasElimAnim ? `${styles.list2RowMarkedPts} ${styles.list2CrossfadeIn}` : ''}`}
         >
           PTS
         </span>
       </div>
 
-      {/* 5. GAIN CHIP (+30): Gold pill on violet 90% background, floats up 24px and fades over 2s */}
-      {animationEvent?.scoreDiff && animationEvent.scoreDiff > 0 && animationEvent.allowChipsAndGlow ? (
+      {/* 5. GAIN CHIP (+30): Gold pill on gain (hidden if marked) */}
+      {!isMarked && animationEvent?.scoreDiff && animationEvent.scoreDiff > 0 && animationEvent.allowChipsAndGlow ? (
         <div
           key={`chip-${animationEvent.timestamp}`}
           data-testid={`gain-chip-${team.rank}`}
@@ -344,8 +490,8 @@ const StadiumRow = memo(function StadiumRow({
         </div>
       ) : null}
 
-      {/* 6. ROW GLOW: Soft gold light sweep on gain */}
-      {animationEvent?.scoreDiff && animationEvent.scoreDiff > 0 && animationEvent.allowChipsAndGlow ? (
+      {/* 6. ROW GLOW: Soft gold light sweep on gain (hidden if marked) */}
+      {!isMarked && animationEvent?.scoreDiff && animationEvent.scoreDiff > 0 && animationEvent.allowChipsAndGlow ? (
         <div
           key={`sweep-${animationEvent.timestamp}`}
           className={styles.list2LightSweep}
@@ -393,6 +539,11 @@ const RankList = memo(function RankList({
   const [displayedTeams, setDisplayedTeams] = useState<RankedTeam[]>(teams);
   // Active animation events map by team ID
   const [animationEvents, setAnimationEvents] = useState<Record<string, RowAnimationEvent>>({});
+  // Active elimination events map by team ID
+  const [eliminationEvents, setEliminationEvents] = useState<Record<string, EliminationEvent>>({});
+  const knownMarkedRef = useRef<Map<string, string>>(new Map());
+  const elimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Teams that were previously in top 3 podium
   const prevPodiumIdsRef = useRef<Set<string>>(new Set(teams.slice(0, 3).map((t) => t.id)));
 
@@ -408,12 +559,24 @@ const RankList = memo(function RankList({
         clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;
       }
+      if (elimTimerRef.current) {
+        clearTimeout(elimTimerRef.current);
+        elimTimerRef.current = null;
+      }
       prevFocusRef.current = currentFocus;
       committedTeamsRef.current = teams;
       pendingTeamsRef.current = teams;
       prevPodiumIdsRef.current = new Set(teams.slice(0, 3).map((t) => t.id));
+
+      const tabMarkedMap = new Map<string, string>();
+      teams.forEach((t) => {
+        if (t.marked) tabMarkedMap.set(t.id, t.marked);
+      });
+      knownMarkedRef.current = tabMarkedMap;
+
       setDisplayedTeams(teams);
       setAnimationEvents({});
+      setEliminationEvents({});
     }
   }, [currentFocus, teams]);
 
@@ -424,9 +587,31 @@ const RankList = memo(function RankList({
       committedTeamsRef.current = teams;
       pendingTeamsRef.current = teams;
       prevPodiumIdsRef.current = new Set(teams.slice(0, 3).map((t) => t.id));
+
+      const initialMarkedMap = new Map<string, string>();
+      teams.forEach((t) => {
+        if (t.marked) initialMarkedMap.set(t.id, t.marked);
+      });
+      knownMarkedRef.current = initialMarkedMap;
+
       setDisplayedTeams(teams);
       return;
     }
+
+    // Check for newly marked teams compared to knownMarkedRef
+    const newlyMarkedTeams: RankedTeam[] = [];
+    const updatedMarkedMap = new Map<string, string>();
+    teams.forEach((t) => {
+      const currentMarked = t.marked || '';
+      const prevMarked = knownMarkedRef.current.get(t.id) || '';
+      if (!prevMarked && currentMarked) {
+        newlyMarkedTeams.push(t);
+      }
+      if (currentMarked) {
+        updatedMarkedMap.set(t.id, currentMarked);
+      }
+    });
+    knownMarkedRef.current = updatedMarkedMap;
 
     // Check if teams actually changed compared to committedTeamsRef
     const hasChanged =
@@ -434,7 +619,13 @@ const RankList = memo(function RankList({
       teams.some((t) => {
         const old = committedTeamsRef.current.find((ot) => ot.id === t.id);
         if (!old) return true;
-        return old.focusScore !== t.focusScore || old.rank !== t.rank || old.isTied !== t.isTied;
+        return (
+          old.focusScore !== t.focusScore ||
+          old.rank !== t.rank ||
+          old.isTied !== t.isTied ||
+          old.marked !== t.marked ||
+          old.out !== t.out
+        );
       });
 
     if (!hasChanged) {
@@ -449,11 +640,57 @@ const RankList = memo(function RankList({
       return;
     }
 
+    // Check if there are score/rank changes
+    const hasScoreOrRankChange = teams.some((t) => {
+      const old = committedTeamsRef.current.find((ot) => ot.id === t.id);
+      if (!old) return false;
+      return old.focusScore !== t.focusScore || old.rank !== t.rank;
+    });
+
+    // Schedule live elimination animation if there are newly marked teams
+    if (newlyMarkedTeams.length > 0) {
+      // Sort newly marked teams by rank descending (LOWEST-ranked row to highest)
+      newlyMarkedTeams.sort((a, b) => b.rank - a.rank);
+
+      // If there's a score/rank change debounce, start after the 800ms debounce
+      const baseDelay = hasScoreOrRankChange ? 800 : 0;
+      const newElimEvents: Record<string, EliminationEvent> = {};
+      const now = Date.now();
+
+      newlyMarkedTeams.forEach((t, idx) => {
+        const delay = baseDelay + Math.min(idx * 350, 4000);
+        const isLast = idx === newlyMarkedTeams.length - 1;
+        newElimEvents[t.id] = {
+          delay,
+          isLast,
+          timestamp: now,
+        };
+      });
+
+      setEliminationEvents(newElimEvents);
+
+      const maxDelay = baseDelay + Math.min((newlyMarkedTeams.length - 1) * 350, 4000);
+      const totalAnimDuration = maxDelay + 2600;
+
+      if (elimTimerRef.current) clearTimeout(elimTimerRef.current);
+      elimTimerRef.current = setTimeout(() => {
+        setEliminationEvents({});
+        elimTimerRef.current = null;
+      }, totalAnimDuration);
+    }
+
     pendingTeamsRef.current = teams;
 
     // Restart 800ms debounce timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
+    }
+
+    // If only marked or out changed (no score or rank changes), update displayedTeams immediately
+    if (!hasScoreOrRankChange) {
+      committedTeamsRef.current = teams;
+      setDisplayedTeams(teams);
+      return;
     }
 
     debounceTimerRef.current = setTimeout(() => {
@@ -524,12 +761,19 @@ const RankList = memo(function RankList({
   // Pause running animations / settle immediately when document is hidden
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.hidden && debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-        debounceTimerRef.current = null;
+      if (document.hidden) {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+          debounceTimerRef.current = null;
+        }
+        if (elimTimerRef.current) {
+          clearTimeout(elimTimerRef.current);
+          elimTimerRef.current = null;
+        }
         setDisplayedTeams(pendingTeamsRef.current);
         committedTeamsRef.current = pendingTeamsRef.current;
         setAnimationEvents({});
+        setEliminationEvents({});
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
@@ -630,6 +874,7 @@ const RankList = memo(function RankList({
                     allZero={allZero}
                     baseNameSize={baseNameSize}
                     disableAnimation={true}
+                    soundEnabled={false}
                     layout={layout}
                   />
                 );
@@ -664,7 +909,9 @@ const RankList = memo(function RankList({
                     allZero={allZero}
                     baseNameSize={baseNameSize}
                     animationEvent={animationEvents[team.id]}
+                    eliminationEvent={eliminationEvents[team.id]}
                     disableAnimation={disableAnimation}
+                    soundEnabled={Boolean(quizState.eliminationSound)}
                     wasOnPodium={wasOnPodium}
                     layout={layout}
                   />

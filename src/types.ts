@@ -7,6 +7,7 @@ export interface Team {
   id: string;
   name: string;
   out: '' | string; // empty or level name when eliminated
+  marked?: '' | string; // empty or level name when marked red
   scores: Record<string, number>; // levelId -> score
 }
 
@@ -62,6 +63,7 @@ export interface QuizState {
   projectorScale?: 'large' | 'xl'; // Default: 'large'
   celebrateWinner?: boolean; // When true, shows Winners Celebration screen!
   soundEnabled?: boolean;
+  eliminationSound?: boolean;
   celebrateTrigger?: number; // timestamp to fire/re-fire pops
   winnersSnapshot?: RevealSnapshotTeam[]; // snapshot taken when winners page opens
   celebrationWording?: CelebrationWording; // Editable celebration wording
