@@ -68,6 +68,33 @@ export default function AdminView() {
     mode: 'red' | 'out';
   } | null>(null);
 
+  // --- Export to Excel State & Handler ---
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportToast, setExportToast] = useState<{ message: string; isError?: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!exportToast) return;
+    const timer = setTimeout(() => {
+      setExportToast(null);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [exportToast]);
+
+  const handleExportExcel = useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const { exportLeaderboardToExcel } = await import('../../exportExcel');
+      const filename = await exportLeaderboardToExcel(state);
+      setExportToast({ message: `Exported ✓ (${filename})` });
+    } catch (err) {
+      console.error('Export Excel failed:', err);
+      setExportToast({ message: 'Export failed, please try again', isError: true });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [isExporting, state]);
+
   const showSavedIndicator = useCallback(() => {
     setSaved(true);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -536,6 +563,21 @@ export default function AdminView() {
                 </button>
               </>
             )}
+
+            {/* Export to Excel Button */}
+            <button
+              type="button"
+              data-testid="admin-export-excel-btn"
+              disabled={isExporting}
+              onClick={handleExportExcel}
+              className="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Download the current leaderboard as a formatted Excel spreadsheet"
+            >
+              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>{isExporting ? 'Exporting…' : 'Export Excel'}</span>
+            </button>
 
             {/* Link to Projector */}
             <a
@@ -1674,6 +1716,21 @@ export default function AdminView() {
         </CollapsibleSection>
 
       </main>
+
+      {/* Export to Excel Toast Notification */}
+      {exportToast && (
+        <div
+          data-testid="admin-export-toast"
+          role="status"
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-2xl text-sm font-semibold transition-all backdrop-blur-sm ${
+            exportToast.isError
+              ? 'bg-rose-950/95 border border-rose-500/50 text-rose-200'
+              : 'bg-[#1a233b]/95 border border-emerald-500/50 text-emerald-300'
+          }`}
+        >
+          <span>{exportToast.message}</span>
+        </div>
+      )}
     </div>
   );
 }

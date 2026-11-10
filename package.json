@@ -18,6 +18,7 @@
     "@fontsource/source-serif-4": "^5.3.1",
     "@types/canvas-confetti": "^1.9.0",
     "canvas-confetti": "^1.9.4",
+    "exceljs": "^4.4.0",
     "framer-motion": "^14.10.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
