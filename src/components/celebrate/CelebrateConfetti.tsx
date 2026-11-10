@@ -38,17 +38,28 @@ export default function CelebrateConfetti({
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('lite') === '1';
 
-  // Initialize canvas-confetti instance
+  // Resize canvas with DPR capped at 1.5
   useEffect(() => {
     if (!canvasRef.current || isReducedMotion || isLite) return;
 
-    const myConfetti = confetti.create(canvasRef.current, {
-      resize: true,
+    const canvas = canvasRef.current;
+    const resizeCanvas = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      canvas.width = Math.round(window.innerWidth * dpr);
+      canvas.height = Math.round(window.innerHeight * dpr);
+    };
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const myConfetti = confetti.create(canvas, {
+      resize: false,
       useWorker: false,
     });
     confettiRef.current = myConfetti;
 
     return () => {
+      window.removeEventListener('resize', resizeCanvas);
       myConfetti.reset();
       confettiRef.current = null;
     };
@@ -87,7 +98,7 @@ export default function CelebrateConfetti({
       }
 
       // Pre-compute shapes
-      let shapes: confetti.Shape[] = ['square', 'circle', 'star'];
+      const shapes: confetti.Shape[] = ['square', 'circle', 'star'];
       let emojiShapes: confetti.Shape[] = [];
       try {
         if (typeof confetti.shapeFromText === 'function') {
@@ -101,122 +112,121 @@ export default function CelebrateConfetti({
         // fallback to standard shapes
       }
 
-      // POP 1: Two party-popper cannons from bottom-left and bottom-right corners
+      // POP 1: Two party-popper cannons from bottom corners (capped at 60 each = 120 total)
       fire({
-        particleCount: 85,
+        particleCount: 60,
         angle: 60,
-        spread: 70,
-        startVelocity: 55,
+        spread: 65,
+        startVelocity: 52,
         origin: { x: 0.05, y: 0.95 },
         colors: CELEBRATION_COLORS,
         shapes: shapes,
-        ticks: 280,
+        ticks: 240,
         gravity: 0.85,
       });
 
       fire({
-        particleCount: 85,
+        particleCount: 60,
         angle: 120,
-        spread: 70,
-        startVelocity: 55,
+        spread: 65,
+        startVelocity: 52,
         origin: { x: 0.95, y: 0.95 },
         colors: CELEBRATION_COLORS,
         shapes: shapes,
-        ticks: 280,
+        ticks: 240,
         gravity: 0.85,
       });
 
-      // POP 2: 400ms later - Wide fan burst from bottom-center behind winner card
+      // POP 2: 400ms later - Wide fan burst from bottom-center behind winner card (50 particles)
       const t1 = setTimeout(() => {
         if (document.hidden) return;
         fire({
-          particleCount: 75,
+          particleCount: 50,
           angle: 90,
-          spread: 120,
-          startVelocity: 50,
+          spread: 110,
+          startVelocity: 48,
           origin: { x: 0.5, y: 0.78 },
           colors: GOLD_WHITE_COLORS,
           shapes: ['circle', 'star'],
-          ticks: 260,
+          ticks: 220,
           gravity: 0.8,
         });
       }, 400);
       timeoutsRef.current.push(t1);
 
-      // POP 3: 900ms later - Emoji confetti (🎉 ⭐ ✨) floating up and out
+      // POP 3: 900ms later - Emoji confetti (12 particles)
       const t2 = setTimeout(() => {
         if (document.hidden) return;
         fire({
-          particleCount: 15,
+          particleCount: 12,
           angle: 90,
-          spread: 80,
-          startVelocity: 40,
+          spread: 75,
+          startVelocity: 38,
           origin: { x: 0.5, y: 0.65 },
           shapes: emojiShapes.length > 0 ? emojiShapes : ['star'],
           scalar: 2,
-          ticks: 300,
+          ticks: 250,
           gravity: 0.5,
         });
       }, 900);
       timeoutsRef.current.push(t2);
 
-      // RAIN: Gentle golden and white confetti rain falling from top for 10 seconds
+      // RAIN: Gentle golden and white confetti rain falling from top for 8 seconds
       const t3 = setTimeout(() => {
         if (document.hidden) return;
         let elapsed = 0;
         rainIntervalRef.current = setInterval(() => {
           if (document.hidden) return;
           elapsed += 1200;
-          if (elapsed >= 10000) {
+          if (elapsed >= 8000) {
             if (rainIntervalRef.current) {
               clearInterval(rainIntervalRef.current);
               rainIntervalRef.current = null;
             }
-            // Start AMBIENT LOOP after rain finishes
             startAmbientLoop();
             return;
           }
 
           fire({
-            particleCount: 8,
-            spread: 60,
-            startVelocity: 16,
+            particleCount: 6,
+            spread: 55,
+            startVelocity: 15,
             origin: { x: 0.2 + Math.random() * 0.6, y: -0.02 },
             colors: GOLD_WHITE_COLORS,
             shapes: ['circle', 'star'],
-            ticks: 240,
+            ticks: 220,
             gravity: 0.35,
-            drift: Math.sin(Date.now() / 1000) * 0.5,
+            drift: Math.sin(Date.now() / 1000) * 0.4,
             scalar: 0.9,
           });
         }, 1200);
-      }, 1600);
+      }, 1500);
       timeoutsRef.current.push(t3);
     };
 
-    // AMBIENT LOOP: every 12 seconds a smaller double pop from both bottom corners (~40 particles each)
+    // AMBIENT LOOP: every 12 seconds double pop from bottom corners (~28 particles each, total ~56)
     const startAmbientLoop = () => {
       ambientIntervalRef.current = setInterval(() => {
         if (document.hidden) return;
         fire({
-          particleCount: 38,
+          particleCount: 28,
           angle: 60,
-          spread: 55,
-          startVelocity: 48,
+          spread: 50,
+          startVelocity: 44,
           origin: { x: 0.08, y: 0.95 },
           colors: CELEBRATION_COLORS,
-          ticks: 240,
+          ticks: 220,
           gravity: 0.85,
         });
 
         fire({
-          particleCount: 38,
+          particleCount: 28,
           angle: 120,
-          spread: 55,
-          startVelocity: 48,
+          spread: 50,
+          startVelocity: 44,
           origin: { x: 0.92, y: 0.95 },
           colors: CELEBRATION_COLORS,
-          ticks: 240,
+          ticks: 220,
           gravity: 0.85,
         });
       }, 12000);
@@ -229,8 +239,19 @@ export default function CelebrateConfetti({
     }, delay);
     timeoutsRef.current.push(initialTimer);
 
+    // Pause on visibilitychange
+    const handleVisChange = () => {
+      if (document.hidden) {
+        clearAllTimers();
+      } else {
+        startAmbientLoop();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisChange);
+
     return () => {
       clearAllTimers();
+      document.removeEventListener('visibilitychange', handleVisChange);
     };
   }, [trigger, soundEnabled, delayStartMs, isReducedMotion, isLite]);
 
@@ -239,11 +260,8 @@ export default function CelebrateConfetti({
   return (
     <canvas
       ref={canvasRef}
-      width={1920}
-      height={1080}
       data-testid="celebrate-confetti-canvas"
-      className="absolute inset-0 pointer-events-none z-50 w-full h-full"
+      className="fixed inset-0 pointer-events-none z-[100] w-full h-full"
     />
   );
 }
-
