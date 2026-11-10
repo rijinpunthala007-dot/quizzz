@@ -1082,58 +1082,28 @@ export default function AdminView() {
               </button>
             </div>
 
-            {/* Banner Subtitle & Footer Text */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-semibold text-[#9aa7bd] uppercase tracking-wider">
-                    Banner Subtitle
-                  </label>
-                  <span className="text-[10px] text-[#9aa7bd]/70 font-mono">
-                    {wording.subtitle.length}/28
-                  </span>
-                </div>
-                <input
-                  type="text"
-                  maxLength={28}
-                  data-testid="wording-input-subtitle"
-                  value={wording.subtitle}
-                  onChange={(e) => handleWordingChange('subtitle', e.target.value)}
-                  className="admin-input w-full text-sm font-medium"
-                  placeholder="Final Honours Board"
-                />
-                <span className="text-[11px] text-[#9aa7bd]/60 mt-1 block">
-                  Displayed beneath the CONGRATULATIONS hexagon banner
+            {/* Banner Subtitle */}
+            <div className="max-w-md">
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs font-semibold text-[#9aa7bd] uppercase tracking-wider">
+                  Banner Subtitle
+                </label>
+                <span className="text-[10px] text-[#9aa7bd]/70 font-mono">
+                  {wording.subtitle.length}/28
                 </span>
               </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <div className="flex items-center gap-1.5">
-                    <label className="text-xs font-semibold text-[#9aa7bd] uppercase tracking-wider">
-                      Footer Status Text
-                    </label>
-                    <span className="text-[10px] bg-amber-400/20 text-amber-300 font-bold px-1.5 py-0.5 rounded border border-amber-400/30">
-                      Locked
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-[#9aa7bd]/70 font-mono">
-                    28/28
-                  </span>
-                </div>
-                <input
-                  type="text"
-                  readOnly
-                  disabled
-                  data-testid="wording-input-footerText"
-                  value="designed and developed by rj"
-                  className="admin-input w-full text-sm font-medium opacity-75 cursor-not-allowed bg-black/30"
-                  placeholder="designed and developed by rj"
-                />
-                <span className="text-[11px] text-[#9aa7bd]/60 mt-1 block">
-                  Permanently set to &ldquo;designed and developed by rj&rdquo; (cannot be edited)
-                </span>
-              </div>
+              <input
+                type="text"
+                maxLength={28}
+                data-testid="wording-input-subtitle"
+                value={wording.subtitle}
+                onChange={(e) => handleWordingChange('subtitle', e.target.value)}
+                className="admin-input w-full text-sm font-medium"
+                placeholder="Final Honours Board"
+              />
+              <span className="text-[11px] text-[#9aa7bd]/60 mt-1 block">
+                Displayed beneath the CONGRATULATIONS hexagon banner
+              </span>
             </div>
 
             {/* Top Card Pills (1st, 2nd, 3rd) */}
