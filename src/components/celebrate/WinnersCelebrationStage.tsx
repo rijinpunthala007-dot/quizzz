@@ -800,7 +800,7 @@ export default function WinnersCelebrationStage({ state }: WinnersCelebrationSta
       <CelebrationFooter
         verseText="&ldquo;Well done, thou good and faithful servant.&rdquo;"
         verseRef="— Matthew 25:21"
-        rightText={wording.footerText || 'OFFICIAL QUIZ RESULTS · FINAL STANDINGS'}
+        rightText="designed and developed by rj"
         footerHeight={footerHeight}
         footerBottomMargin={footerBottomMargin}
         s={s}

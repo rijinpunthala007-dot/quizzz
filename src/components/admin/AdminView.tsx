@@ -100,11 +100,13 @@ export default function AdminView() {
     () => ({
       ...DEFAULT_WORDING,
       ...(state.celebrationWording || {}),
+      footerText: 'designed and developed by rj',
     }),
     [state.celebrationWording]
   );
 
   const handleWordingChange = (key: keyof CelebrationWording, val: string) => {
+    if (key === 'footerText') return; // Locked: cannot be edited by admin
     const trimmed = val.slice(0, 28);
     updateStateImmediate((s) => ({
       ...s,
@@ -112,6 +114,7 @@ export default function AdminView() {
         ...DEFAULT_WORDING,
         ...(s.celebrationWording || {}),
         [key]: trimmed,
+        footerText: 'designed and developed by rj',
       },
     }));
   };
@@ -119,7 +122,10 @@ export default function AdminView() {
   const handleResetWording = () => {
     updateStateImmediate((s) => ({
       ...s,
-      celebrationWording: { ...DEFAULT_WORDING },
+      celebrationWording: {
+        ...DEFAULT_WORDING,
+        footerText: 'designed and developed by rj',
+      },
     }));
   };
 
@@ -1103,24 +1109,29 @@ export default function AdminView() {
 
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-semibold text-[#9aa7bd] uppercase tracking-wider">
-                    Footer Status Text
-                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-semibold text-[#9aa7bd] uppercase tracking-wider">
+                      Footer Status Text
+                    </label>
+                    <span className="text-[10px] bg-amber-400/20 text-amber-300 font-bold px-1.5 py-0.5 rounded border border-amber-400/30">
+                      Locked
+                    </span>
+                  </div>
                   <span className="text-[10px] text-[#9aa7bd]/70 font-mono">
-                    {wording.footerText.length}/28
+                    28/28
                   </span>
                 </div>
                 <input
                   type="text"
-                  maxLength={28}
+                  readOnly
+                  disabled
                   data-testid="wording-input-footerText"
-                  value={wording.footerText}
-                  onChange={(e) => handleWordingChange('footerText', e.target.value)}
-                  className="admin-input w-full text-sm font-medium"
-                  placeholder="OFFICIAL QUIZ RESULTS · FINAL STANDINGS"
+                  value="designed and developed by rj"
+                  className="admin-input w-full text-sm font-medium opacity-75 cursor-not-allowed bg-black/30"
+                  placeholder="designed and developed by rj"
                 />
                 <span className="text-[11px] text-[#9aa7bd]/60 mt-1 block">
-                  Displayed on the right side of the bottom footer
+                  Permanently set to &ldquo;designed and developed by rj&rdquo; (cannot be edited)
                 </span>
               </div>
             </div>

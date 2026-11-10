@@ -51,7 +51,7 @@ export const DEFAULT_WORDING: CelebrationWording = {
   tagline2: 'Outstanding Performance',
   tagline3: 'Well Done',
   subtitle: 'Final Honours Board',
-  footerText: 'OFFICIAL QUIZ RESULTS · FINAL STANDINGS',
+  footerText: 'designed and developed by rj',
 };
 
 export interface QuizState {
