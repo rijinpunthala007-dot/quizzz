@@ -1,0 +1,435 @@
+/* Scoped styles for Admin Scores Table (prefix: sc2-) */
+
+.sc2Container {
+  width: 100%;
+  position: relative;
+}
+
+.sc2ScrollContainer {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid #243049;
+  border-radius: 12px;
+  background-color: #0d1525;
+  position: relative;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  scroll-padding-left: 368px;
+  scroll-padding-right: 272px;
+}
+
+@media (max-width: 1099px) {
+  .sc2ScrollContainer {
+    scroll-padding-left: 252px;
+    scroll-padding-right: 96px;
+  }
+}
+
+@media (max-width: 639px) {
+  .sc2ScrollContainer {
+    scroll-padding-left: 162px;
+    scroll-padding-right: 96px;
+  }
+}
+
+.sc2Table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  table-layout: fixed;
+}
+
+/* --- THEAD & TH --- */
+.sc2Thead {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+
+.sc2Th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background-color: #161f36 !important;
+  color: #9aa7bd;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  border-bottom: 1px solid #243049;
+  box-sizing: border-box;
+  padding: 8px 4px;
+  user-select: none;
+}
+
+/* Corner TH (sticky both ways) */
+.sc2ThCorner {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background-color: #161f36 !important;
+  border-bottom: 1px solid #243049;
+  box-sizing: border-box;
+}
+
+/* Sticky Left TH */
+.sc2ThSelect {
+  left: 0;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  text-align: center;
+}
+
+.sc2ThRank {
+  left: 44px;
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+  text-align: center;
+  color: #f2c94c;
+}
+
+.sc2ThGroup {
+  left: 116px;
+  width: 240px;
+  min-width: 240px;
+  max-width: 240px;
+  text-align: left;
+  padding-left: 12px;
+}
+
+/* Sticky Right TH */
+.sc2ThTotal {
+  right: 176px;
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+  text-align: center;
+  color: #f2c94c;
+}
+
+.sc2ThOut {
+  right: 116px;
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  text-align: center;
+}
+
+.sc2ThRed {
+  right: 56px;
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  text-align: center;
+}
+
+.sc2ThDel {
+  right: 0;
+  width: 56px;
+  min-width: 56px;
+  max-width: 56px;
+  text-align: center;
+}
+
+/* Level TH */
+.sc2ThLevel {
+  width: 96px;
+  min-width: 96px;
+  max-width: 96px;
+  text-align: center;
+  padding: 6px 4px;
+  box-sizing: border-box;
+  transition: color 150ms ease, box-shadow 150ms ease;
+}
+
+.sc2LevelName {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.25;
+  word-break: break-word;
+  white-space: normal;
+  text-overflow: clip;
+  max-height: 2.5em;
+  font-weight: 700;
+}
+
+/* --- TBODY & TR --- */
+.sc2Row {
+  --row-bg: #0d1525;
+  background-color: var(--row-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background-color 150ms ease;
+}
+
+.sc2RowAlt {
+  --row-bg: #111a2e;
+  background-color: var(--row-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background-color 150ms ease;
+}
+
+.sc2Row:hover,
+.sc2RowAlt:hover {
+  --row-bg: #16223b;
+}
+
+.sc2RowMarked {
+  --row-bg: #251119;
+  background-color: var(--row-bg);
+  border-bottom: 1px solid rgba(225, 29, 72, 0.15);
+}
+
+.sc2RowMarked:hover {
+  --row-bg: #301620;
+}
+
+.sc2RowOut {
+  --row-bg: #161421;
+  background-color: var(--row-bg);
+  opacity: 0.5;
+}
+
+.sc2RowOut:hover {
+  --row-bg: #1e1b2b;
+}
+
+/* Normal TD */
+.sc2Td {
+  z-index: 1;
+  padding: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  box-sizing: border-box;
+  text-align: center;
+}
+
+/* Sticky TD */
+.sc2TdSticky {
+  position: sticky;
+  z-index: 3;
+  background-color: var(--row-bg) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  box-sizing: border-box;
+}
+
+.sc2TdSelect {
+  left: 0;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  text-align: center;
+}
+
+.sc2TdRank {
+  left: 44px;
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+  text-align: center;
+}
+
+.sc2TdGroup {
+  left: 116px;
+  width: 240px;
+  min-width: 240px;
+  max-width: 240px;
+  text-align: left;
+  padding: 4px 10px;
+  transition: box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.sc2TdLevel {
+  width: 96px;
+  min-width: 96px;
+  max-width: 96px;
+  text-align: center;
+  padding: 4px 6px;
+}
+
+.sc2TdTotal {
+  right: 176px;
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+  text-align: center;
+  font-weight: 700;
+  color: #f2c94c;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, monospace;
+}
+
+.sc2TdOut {
+  right: 116px;
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  text-align: center;
+}
+
+.sc2TdRed {
+  right: 56px;
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  text-align: center;
+}
+
+.sc2TdDel {
+  right: 0;
+  width: 56px;
+  min-width: 56px;
+  max-width: 56px;
+  text-align: center;
+}
+
+/* --- RESPONSIVE ADJUSTMENTS --- */
+@media (max-width: 1099px) {
+  /* Only GROUP is pinned on left */
+  .sc2ThSelect,
+  .sc2TdSelect,
+  .sc2ThRank,
+  .sc2TdRank {
+    position: static !important;
+    left: auto !important;
+    z-index: 1 !important;
+  }
+  .sc2ThSelect,
+  .sc2ThRank {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 4 !important;
+  }
+
+  .sc2ThGroup,
+  .sc2TdGroup {
+    left: 0 !important;
+  }
+
+  /* Only TOTAL is pinned on right */
+  .sc2ThOut,
+  .sc2TdOut,
+  .sc2ThRed,
+  .sc2TdRed,
+  .sc2ThDel,
+  .sc2TdDel {
+    position: static !important;
+    right: auto !important;
+    z-index: 1 !important;
+  }
+  .sc2ThOut,
+  .sc2ThRed,
+  .sc2ThDel {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 4 !important;
+  }
+
+  .sc2ThTotal,
+  .sc2TdTotal {
+    right: 0 !important;
+  }
+}
+
+@media (max-width: 639px) {
+  .sc2ThGroup,
+  .sc2TdGroup {
+    width: 150px !important;
+    min-width: 150px !important;
+    max-width: 150px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+}
+
+/* --- EDGE SHADOWS (toggled by scroll event) --- */
+:global(.sc2-has-scroll-left) .sc2ThGroup,
+:global(.sc2-has-scroll-left) .sc2TdGroup {
+  box-shadow: 8px 0 8px -4px rgba(0, 0, 0, 0.45);
+}
+
+:global(.sc2-has-scroll-right) .sc2ThTotal,
+:global(.sc2-has-scroll-right) .sc2TdTotal {
+  box-shadow: -8px 0 8px -4px rgba(0, 0, 0, 0.45);
+}
+
+/* --- ACTIVE CELL HIGHLIGHT --- */
+:global(.sc2-header-active) {
+  color: #f2c94c !important;
+  box-shadow: inset 0 -2px 0 #f2c94c !important;
+}
+
+:global(.sc2-group-active) {
+  box-shadow: inset 3px 0 0 #f2c94c !important;
+  --row-bg: #1a2742 !important;
+}
+
+/* If both active and scroll shadow apply to group cell */
+:global(.sc2-has-scroll-left) :global(.sc2-group-active) {
+  box-shadow: inset 3px 0 0 #f2c94c, 8px 0 8px -4px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* --- JUMP BAR & CHIPS --- */
+.sc2JumpBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background-color: #121929;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.sc2JumpLabel {
+  color: #9aa7bd;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  padding-right: 4px;
+  user-select: none;
+}
+
+.sc2JumpChip {
+  padding: 3px 8px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #9aa7bd;
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 150ms ease;
+  user-select: none;
+}
+
+.sc2JumpChip:hover {
+  background-color: rgba(242, 201, 76, 0.2);
+  color: #f2c94c;
+  border-color: rgba(242, 201, 76, 0.4);
+}
+
+.sc2JumpChipTotal {
+  padding: 3px 10px;
+  border-radius: 8px;
+  background-color: rgba(242, 201, 76, 0.12);
+  color: #f2c94c;
+  font-weight: 700;
+  font-size: 12px;
+  border: 1px solid rgba(242, 201, 76, 0.3);
+  cursor: pointer;
+  transition: all 150ms ease;
+  margin-left: 4px;
+  user-select: none;
+}
+
+.sc2JumpChipTotal:hover {
+  background-color: rgba(242, 201, 76, 0.25);
+  box-shadow: 0 0 10px rgba(242, 201, 76, 0.25);
+}

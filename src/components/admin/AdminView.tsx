@@ -3,7 +3,7 @@ import { useQuizState } from '../../store';
 import type { QuizState, RankedTeam, CelebrationWording } from '../../types';
 import { DEFAULT_WORDING } from '../../types';
 import { uid, getTeamTotal, rankTeams, createRevealSnapshot, formatScore } from '../../utils';
-import Avatar from '../projector/Avatar';
+import ScoresTable from './ScoresTable';
 
 export default function AdminView() {
   const { state, setState, setStateImmediate } = useQuizState();
@@ -215,10 +215,18 @@ export default function AdminView() {
   };
 
   const handleDeleteGroup = (teamId: string) => {
-    updateStateImmediate((s) => ({
-      ...s,
-      teams: s.teams.filter((t) => t.id !== teamId),
-    }));
+    const team = state.teams.find((t) => t.id === teamId);
+    setConfirmDialog({
+      title: `Delete group "${team?.name || 'this group'}"?`,
+      message: 'This group and all its scores will be removed. This cannot be undone.',
+      onConfirm: () => {
+        updateStateImmediate((s) => ({
+          ...s,
+          teams: s.teams.filter((t) => t.id !== teamId),
+        }));
+        setConfirmDialog(null);
+      },
+    });
   };
 
   const latestLevelName = useMemo(() => {
@@ -439,7 +447,7 @@ export default function AdminView() {
   }, [rankedTeams]);
 
   return (
-    <div className="h-full w-full overflow-y-auto admin-scroll bg-gradient-to-b from-[#0b1322] to-[#0f1a2e] text-[#f4ecd8] select-auto pb-16">
+    <div className="h-full w-full overflow-y-auto overflow-x-hidden admin-scroll bg-gradient-to-b from-[#0b1322] to-[#0f1a2e] text-[#f4ecd8] select-auto pb-16">
       {/* 1. STICKY TOP BAR */}
       <header className="sticky top-0 z-40 bg-[#0b1322]/95 backdrop-blur-md border-b border-[#243049] px-4 md:px-8 py-3 shadow-xl">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
@@ -1117,209 +1125,34 @@ export default function AdminView() {
                 </button>
               </form>
 
-              {/* FULL TABLE: Displays ALL groups clearly */}
-              <div className="overflow-x-auto admin-scroll border border-[#243049] rounded-xl shadow-lg relative bg-[#0d1525]">
-                <table className="w-full text-sm border-collapse">
-                  <thead className="sticky top-0 z-30 bg-[#161f36] text-[11px] uppercase tracking-wider text-[#9aa7bd] border-b border-[#243049] shadow-md">
-                    <tr>
-                      <th className="text-center py-2.5 px-1 w-8">
-                        <input
-                          type="checkbox"
-                          checked={displayedTeams.length > 0 && displayedTeams.every((t) => selectedTeamIds.has(t.id))}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedTeamIds(new Set(displayedTeams.map((t) => t.id)));
-                            } else {
-                              setSelectedTeamIds(new Set());
-                            }
-                          }}
-                          className="w-3.5 h-3.5 accent-[#f2c94c] cursor-pointer rounded"
-                          title="Select all displayed groups"
-                        />
-                      </th>
-                      <th className="text-center py-2.5 px-2 w-12 font-bold text-[#f2c94c]">
-                        #
-                      </th>
-                      <th className="text-left py-2.5 px-3 min-w-[200px] font-semibold">
-                        Group Name ({displayedTeams.length})
-                      </th>
-                      {state.levels.map((l) => (
-                        <th
-                          key={l.id}
-                          className="text-center py-2.5 px-2 min-w-[80px] font-semibold"
-                        >
-                          {l.name}
-                        </th>
-                      ))}
-                      <th className="text-center py-2.5 px-3 min-w-[70px] font-bold text-[#f2c94c]">
-                        Total
-                      </th>
-                      <th className="text-center py-2.5 px-2 w-14" title="Mark eliminated">
-                        Out
-                      </th>
-                      <th className="text-center py-2.5 px-2 w-14" title="Mark red (stays on board)">
-                        Red
-                      </th>
-                      <th className="text-center py-2.5 px-2 w-12" title="Delete group">
-                        Del
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedTeams.map((team, teamIndex) => {
-                      const isOut = Boolean(team.out);
-                      const isMarked = Boolean(team.marked);
-                      const rankInfo = team.rankInfo;
-                      const rank = rankInfo?.rank;
-
-                      return (
-                        <tr
-                          key={team.id}
-                          className={`
-                            border-b border-white/[0.04] transition-colors
-                            ${teamIndex % 2 === 1 ? 'bg-white/[0.015]' : 'bg-transparent'}
-                            ${isOut ? 'opacity-40 bg-red-950/10' : isMarked ? 'bg-rose-950/20 hover:bg-rose-950/30' : 'hover:bg-white/[0.03]'}
-                          `}
-                        >
-                          {/* Selection Checkbox */}
-                          <td className={`px-1 text-center ${isCompact ? 'py-1' : 'py-2'}`}>
-                            <input
-                              type="checkbox"
-                              checked={selectedTeamIds.has(team.id)}
-                              onChange={() => {
-                                setSelectedTeamIds((prev) => {
-                                  const next = new Set(prev);
-                                  if (next.has(team.id)) next.delete(team.id);
-                                  else next.add(team.id);
-                                  return next;
-                                });
-                              }}
-                              className="w-3.5 h-3.5 accent-[#f2c94c] cursor-pointer rounded"
-                              title="Select group"
-                            />
-                          </td>
-
-                          {/* Rank Badge */}
-                          <td className={`py-2 px-1 text-center font-mono ${isCompact ? 'py-1' : 'py-2'}`}>
-                            {isOut ? (
-                              <span className="text-[10px] font-bold text-red-400 bg-red-950/60 px-1.5 py-0.5 rounded border border-red-800/40">
-                                OUT
-                              </span>
-                            ) : rank === 1 ? (
-                              <span className="text-xs font-bold text-[#f2c94c] bg-[#f2c94c]/20 px-2 py-0.5 rounded-full border border-[#f2c94c]/50">
-                                #1
-                              </span>
-                            ) : rank === 2 ? (
-                              <span className="text-xs font-bold text-[#8fb8e8] bg-[#8fb8e8]/20 px-2 py-0.5 rounded-full border border-[#8fb8e8]/50">
-                                #2
-                              </span>
-                            ) : rank === 3 ? (
-                              <span className="text-xs font-bold text-[#6fbf8e] bg-[#6fbf8e]/20 px-2 py-0.5 rounded-full border border-[#6fbf8e]/50">
-                                #3
-                              </span>
-                            ) : (
-                              <span className="text-xs text-[#9aa7bd] bg-white/5 px-1.5 py-0.5 rounded font-medium">
-                                #{rankInfo?.displayRank || teamIndex + 1}
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Group Avatar + Name */}
-                          <td className={`px-3 ${isCompact ? 'py-1' : 'py-2'}`}>
-                            <div className="flex items-center gap-2.5">
-                              <Avatar
-                                name={team.name}
-                                id={team.id}
-                                size={isCompact ? 26 : 32}
-                                ringColor={
-                                  rank === 1 ? '#f2c94c' : rank === 2 ? '#8fb8e8' : rank === 3 ? '#6fbf8e' : undefined
-                                }
-                              />
-                              <div className="flex-1 min-w-0">
-                                <input
-                                  type="text"
-                                  value={team.name}
-                                  onChange={(e) => handleRenameGroup(team.id, e.target.value)}
-                                  className={`admin-input w-full font-semibold ${
-                                    isCompact ? 'py-1 text-xs' : 'py-1.5 text-sm'
-                                  }`}
-                                  placeholder="Group name"
-                                />
-                                {isOut && (
-                                  <span className="text-[10px] text-red-300 block mt-0.5 italic">
-                                    Eliminated ({team.out})
-                                  </span>
-                                )}
-                                {!isOut && isMarked && (
-                                  <span className="text-[10px] text-rose-400 block mt-0.5 italic font-medium">
-                                    Marked red ({team.marked})
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Scores inputs for each level */}
-                          {state.levels.map((l, levelIndex) => (
-                            <td key={l.id} className={`px-1 text-center ${isCompact ? 'py-1' : 'py-2'}`}>
-                              <ScoreInputCell
-                                score={team.scores[l.id]}
-                                onChange={(val) => handleScoreChange(team.id, l.id, val)}
-                                onKeyDown={(e) => handleScoreKeyDown(e, teamIndex, levelIndex)}
-                                coord={`${teamIndex}-${levelIndex}`}
-                                isCompact={isCompact}
-                              />
-                            </td>
-                          ))}
-
-                          {/* Total Score */}
-                          <td
-                            className={`px-3 text-center font-bold text-[#f2c94c] tabular-nums font-mono ${
-                              isCompact ? 'py-1 text-sm' : 'py-2 text-base'
-                            }`}
-                          >
-                            {formatScore(team.total)}
-                          </td>
-
-                          {/* Out Checkbox */}
-                          <td className={`px-2 text-center ${isCompact ? 'py-1' : 'py-2'}`}>
-                            <input
-                              type="checkbox"
-                              checked={isOut}
-                              onChange={() => handleToggleOut(team.id)}
-                              className="w-4 h-4 accent-[#f2c94c] cursor-pointer rounded"
-                              title={isOut ? 'Mark as active' : 'Mark as eliminated'}
-                            />
-                          </td>
-
-                          {/* Red Checkbox */}
-                          <td className={`px-2 text-center ${isCompact ? 'py-1' : 'py-2'}`}>
-                            <input
-                              type="checkbox"
-                              checked={isMarked}
-                              onChange={() => handleToggleMarked(team.id)}
-                              className="w-4 h-4 accent-rose-500 cursor-pointer rounded"
-                              title={team.marked ? `Marked red (${team.marked}). Click to unmark.` : 'Mark red (stays on board)'}
-                            />
-                          </td>
-
-                          {/* Delete Button */}
-                          <td className={`px-2 text-center ${isCompact ? 'py-1' : 'py-2'}`}>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteGroup(team.id)}
-                              className="text-red-400/60 hover:text-red-400 text-sm p-1 rounded transition-colors"
-                              title="Delete group"
-                            >
-                              ✕
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              {/* FULL TABLE: Sticky headers, sticky left & right columns with high-performance scrolling */}
+              <ScoresTable
+                levels={state.levels}
+                displayedTeams={displayedTeams}
+                selectedTeamIds={selectedTeamIds}
+                isCompact={isCompact}
+                onToggleSelectTeam={(teamId) => {
+                  setSelectedTeamIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(teamId)) next.delete(teamId);
+                    else next.add(teamId);
+                    return next;
+                  });
+                }}
+                onSelectAllTeams={(checked) => {
+                  if (checked) {
+                    setSelectedTeamIds(new Set(displayedTeams.map((t) => t.id)));
+                  } else {
+                    setSelectedTeamIds(new Set());
+                  }
+                }}
+                onRenameGroup={handleRenameGroup}
+                onScoreChange={handleScoreChange}
+                onScoreKeyDown={handleScoreKeyDown}
+                onToggleOut={handleToggleOut}
+                onToggleMarked={handleToggleMarked}
+                onDeleteGroup={handleDeleteGroup}
+              />
             </div>
           )}
         </CollapsibleSection>
@@ -1732,77 +1565,6 @@ export default function AdminView() {
         </div>
       )}
     </div>
-  );
-}
-
-interface ScoreInputCellProps {
-  score: number | undefined;
-  onChange: (val: string) => void;
-  onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  coord: string;
-  isCompact: boolean;
-}
-
-function ScoreInputCell({
-  score,
-  onChange,
-  onKeyDown,
-  coord,
-  isCompact,
-}: ScoreInputCellProps) {
-  const [text, setText] = useState<string>(score !== undefined ? String(score) : '');
-  const isTypingRef = useRef(false);
-
-  useEffect(() => {
-    if (!isTypingRef.current) {
-      setText(score !== undefined ? String(score) : '');
-    }
-  }, [score]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-    // Allow empty, digits, and a single decimal point (e.g. "10", "10.", "10.5", ".5")
-    if (raw === '' || /^-?\d*\.?\d*$/.test(raw)) {
-      isTypingRef.current = true;
-      setText(raw);
-      onChange(raw);
-    }
-  };
-
-  const handleBlur = () => {
-    isTypingRef.current = false;
-    if (text.endsWith('.')) {
-      const trimmed = text.slice(0, -1);
-      setText(trimmed);
-      onChange(trimmed);
-    } else {
-      setText(score !== undefined ? String(score) : '');
-    }
-  };
-
-  return (
-    <input
-      type="text"
-      inputMode="decimal"
-      data-coord={coord}
-      value={text}
-      onFocus={(e) => {
-        isTypingRef.current = true;
-        e.target.select();
-      }}
-      onBlur={handleBlur}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          isTypingRef.current = false;
-        }
-        onKeyDown(e);
-      }}
-      onChange={handleChange}
-      className={`admin-input w-full text-center font-mono font-bold tabular-nums ${
-        isCompact ? 'py-1 text-xs' : 'py-1.5 text-sm'
-      }`}
-      placeholder="0"
-    />
   );
 }
 
