@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import type { QuizState } from './types';
-import { DEFAULT_REVEAL, DEFAULT_WORDING } from './types';
+import type { QuizState, QuizSettings } from './types';
+import { DEFAULT_REVEAL, DEFAULT_WORDING, DEFAULT_DISPLAY_SETTINGS } from './types';
 import { uid, createRevealSnapshot } from './utils';
 import { generateDemoState } from './demo';
 
@@ -34,7 +34,7 @@ try {
   // BroadcastChannel fallback to storage event
 }
 
-export function createEmptyQuizState(): QuizState {
+export function createEmptyQuizState(existingSettings?: QuizSettings): QuizState {
   return {
     title: 'Church Bible Quiz 2026',
     focus: 'all',
@@ -47,6 +47,7 @@ export function createEmptyQuizState(): QuizState {
     teams: [],
     celebrationWording: { ...DEFAULT_WORDING },
     reveal: { ...DEFAULT_REVEAL },
+    settings: existingSettings ?? { display: { ...DEFAULT_DISPLAY_SETTINGS } },
   };
 }
 
@@ -100,6 +101,12 @@ function loadState(): QuizState {
           }
           if (!parsed.celebrationWording) {
             parsed.celebrationWording = { ...DEFAULT_WORDING };
+          }
+          if (!parsed.settings?.display) {
+            parsed.settings = {
+              ...(parsed.settings || {}),
+              display: { ...DEFAULT_DISPLAY_SETTINGS },
+            };
           }
           if (parsed.celebrateWinner && (!parsed.winnersSnapshot || parsed.winnersSnapshot.length === 0)) {
             parsed.winnersSnapshot = createRevealSnapshot(parsed);

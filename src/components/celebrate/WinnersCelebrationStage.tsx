@@ -8,6 +8,7 @@ import CelebrateConfetti from './CelebrateConfetti';
 import { useFitText } from './useFitText';
 import AmbientFX from '../projector/AmbientFX';
 import { computeStageH } from '../projector/layout';
+import { useDisplaySettings } from '../../hooks/useDisplaySettings';
 import styles from './WinnersCelebrationStage.module.css';
 
 interface WinnersCelebrationStageProps {
@@ -599,12 +600,9 @@ export default function WinnersCelebrationStage({ state }: WinnersCelebrationSta
   const t = (H - 1080) / 360;
   const s = 1 + 0.28 * t;
 
-  const isReducedMotion =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const isLite =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('lite') === '1';
+  const displaySettings = useDisplaySettings();
+  const isReducedMotion = displaySettings.isReducedMotion;
+  const isLite = displaySettings.isLite;
 
   // Autohide buttons & cursor on mouse inactivity
   const [showControls, setShowControls] = useState(false);

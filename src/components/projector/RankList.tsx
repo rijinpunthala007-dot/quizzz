@@ -6,6 +6,7 @@ import Avatar from './Avatar';
 import { getRankMovement, formatScore } from '../../utils';
 import { useRowNameFit } from './useRowNameFit';
 import { useQuizStateReadOnly } from '../../store';
+import { useDisplaySettings } from '../../hooks/useDisplaySettings';
 import styles from './RankList.module.css';
 
 interface RankListProps {
@@ -166,6 +167,7 @@ interface StadiumRowProps {
   animationEvent?: RowAnimationEvent;
   eliminationEvent?: EliminationEvent;
   disableAnimation: boolean;
+  disableElimAnimation?: boolean;
   soundEnabled?: boolean;
   wasOnPodium?: boolean;
   layout?: ProjectorLayout;
@@ -179,6 +181,7 @@ const StadiumRow = memo(function StadiumRow({
   animationEvent,
   eliminationEvent,
   disableAnimation,
+  disableElimAnimation = false,
   wasOnPodium,
   layout,
 }: StadiumRowProps) {
@@ -186,7 +189,7 @@ const StadiumRow = memo(function StadiumRow({
   const s = layout?.s ?? 1;
 
   const isMarked = Boolean(team.marked);
-  const hasElimAnim = Boolean(eliminationEvent && !disableAnimation);
+  const hasElimAnim = Boolean(eliminationEvent && !disableElimAnimation);
   const delay = eliminationEvent?.delay ?? 0;
   const isStrike = Boolean(eliminationEvent?.isStrike);
   const fillDelay = delay + (isStrike ? 300 : 0);
@@ -504,18 +507,17 @@ const RankList = memo(function RankList({
   const headerStripHeight = layout ? layout.listHeaderHeight : 36;
   const headerFontSize = Math.floor(22 * s);
 
-  // Reduced motion and URL parameters check
+  // Display settings and URL parameters check
+  const displaySettings = useDisplaySettings();
   const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const isClassicList = searchParams?.get('list') === 'classic';
-  const isLite = searchParams?.get('lite') === '1' || teams.length > 30;
-  const isFxOff = searchParams?.get('fx') === 'off';
-  const prefersReduced =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const disableAnimation = isClassicList || isLite || isFxOff || prefersReduced;
+  const isLite = displaySettings.isLite || teams.length > 30;
+  const prefersReduced = displaySettings.isReducedMotion;
+  const disableAnimation = !displaySettings.scoreAnimations || isClassicList || isLite || prefersReduced;
+  const disableElimAnimation = isLite || prefersReduced;
   const isStrike = Boolean(
-    (quizState as unknown as { strikeThrough?: boolean })?.strikeThrough ||
-    searchParams?.get('strike') === '1'
+    displaySettings.isStrike ||
+    (quizState as unknown as { strikeThrough?: boolean })?.strikeThrough
   );
 
   // Baseline committed teams snapshot
@@ -663,7 +665,7 @@ const RankList = memo(function RankList({
       setEliminationEvents(newElimEvents);
 
       // Audio: ONE soft low thud per batch when the first row starts
-      if (quizState.eliminationSound && !disableAnimation) {
+      if (quizState.eliminationSound && !disableElimAnimation) {
         setTimeout(() => {
           if (!document.hidden) {
             playEliminationThud();
@@ -913,6 +915,7 @@ const RankList = memo(function RankList({
                     animationEvent={animationEvents[team.id]}
                     eliminationEvent={eliminationEvents[team.id]}
                     disableAnimation={disableAnimation}
+                    disableElimAnimation={disableElimAnimation}
                     soundEnabled={Boolean(quizState.eliminationSound)}
                     wasOnPodium={wasOnPodium}
                     layout={layout}

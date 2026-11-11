@@ -4,6 +4,7 @@ import type { RankedTeam, Level, Team } from '../../types';
 import type { ProjectorLayout } from './layout';
 import AnimatedScore from './AnimatedScore';
 import { getInitials, formatScore } from '../../utils';
+import { useDisplaySettings } from '../../hooks/useDisplaySettings';
 import styles from './PodiumV2.module.css';
 
 interface PodiumProps {
@@ -348,7 +349,9 @@ const PodiumCard = memo(function PodiumCard({
   slotRank,
   disableAnimation,
   isLite,
-  fxMode,
+  fxMode: _fxMode,
+  halo = true,
+  candle = false,
   glowSwell,
   layout,
 }: {
@@ -357,6 +360,8 @@ const PodiumCard = memo(function PodiumCard({
   disableAnimation: boolean;
   isLite: boolean;
   fxMode: 'off' | 'soft' | 'full';
+  halo?: boolean;
+  candle?: boolean;
   glowSwell: boolean;
   layout?: ProjectorLayout;
 }) {
@@ -473,7 +478,7 @@ const PodiumCard = memo(function PodiumCard({
       {isWinner && (
         <div
           className={`${styles.goldGlow} ${glowSwell ? styles.goldGlowSwell : ''} ${
-            fxMode === 'full' ? styles.goldGlowFlicker : ''
+            candle && !isLite ? styles.goldGlowFlicker : ''
           }`}
         />
       )}
@@ -532,12 +537,23 @@ const PodiumCard = memo(function PodiumCard({
             {isWinner && <WinnerCrown />}
 
             {/* Breathing Gold Halo (Soft & Full) */}
-            {isWinner && fxMode !== 'off' && !isLite && (
+            {isWinner && !isLite && (
               <div
-                data-testid="podium-breathing-halo"
-                style={{ width: `${avatarSize}px`, height: `${avatarSize}px` }}
-                className={styles.breathingHalo}
-              />
+                data-testid="podium-breathing-halo-container"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  opacity: halo ? 1 : 0,
+                  transition: 'opacity 400ms ease-out',
+                  pointerEvents: 'none',
+                }}
+              >
+                <div
+                  data-testid="podium-breathing-halo"
+                  style={{ width: `${avatarSize}px`, height: `${avatarSize}px` }}
+                  className={styles.breathingHalo}
+                />
+              </div>
             )}
 
             {/* Double Ring Avatar */}
@@ -662,16 +678,9 @@ const PodiumV2 = memo(function PodiumV2({
   podiumHeight,
   layout,
 }: PodiumProps) {
-  // Read ?fx=off | soft | full from URL (default soft)
-  const fxMode = useMemo<'off' | 'soft' | 'full'>(() => {
-    if (typeof window === 'undefined') return 'soft';
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('lite') === '1') return 'off';
-    const val = params.get('fx');
-    if (val === 'off') return 'off';
-    if (val === 'full') return 'full';
-    return 'soft';
-  }, []);
+  const displaySettings = useDisplaySettings();
+  const { isLite, halo, candle, bgPreset } = displaySettings;
+  const fxMode = (isLite ? 'off' : bgPreset) as 'off' | 'soft' | 'full';
 
   // Extract top 3 active teams by ranking order
   const activeTeams = useMemo(() => teams.filter((t) => !t.out), [teams]);
@@ -718,10 +727,7 @@ const PodiumV2 = memo(function PodiumV2({
     return () => document.removeEventListener('visibilitychange', handleVis);
   }, []);
 
-  // Lite mode detection
-  const isLite =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('lite') === '1';
+
 
   // Columns layout order: 2nd (left), 1st (center), 3rd (right)
   const columns = [
@@ -812,6 +818,8 @@ const PodiumV2 = memo(function PodiumV2({
             disableAnimation={disableAnimation}
             isLite={isLite}
             fxMode={fxMode}
+            halo={halo}
+            candle={candle}
             glowSwell={glowSwell && slotRank === 1}
             layout={layout}
           />

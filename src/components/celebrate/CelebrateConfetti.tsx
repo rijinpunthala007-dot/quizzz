@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { playPartyPopperPop } from '../reveal/sound';
+import { useDisplaySettings } from '../../hooks/useDisplaySettings';
 
 interface CelebrateConfettiProps {
   trigger?: number;
@@ -31,16 +32,12 @@ export default function CelebrateConfetti({
   const timeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
   const lastFiredTriggerRef = useRef<number | null>(null);
 
-  const isReducedMotion =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const isLite =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('lite') === '1';
+  const { isLite, isReducedMotion, confetti: confettiEnabled } = useDisplaySettings();
+  const isEnabled = !isReducedMotion && !isLite && confettiEnabled;
 
   // Resize canvas with DPR capped at 1.5
   useEffect(() => {
-    if (!canvasRef.current || isReducedMotion || isLite) return;
+    if (!canvasRef.current || !isEnabled) return;
 
     const canvas = canvasRef.current;
     const resizeCanvas = () => {
@@ -63,12 +60,12 @@ export default function CelebrateConfetti({
       myConfetti.reset();
       confettiRef.current = null;
     };
-  }, [isReducedMotion, isLite]);
+  }, [isEnabled]);
 
   // Execute sequence
   useEffect(() => {
     const fire = confettiRef.current;
-    if (!fire || isReducedMotion || isLite) return;
+    if (!fire || !isEnabled) return;
 
     const clearAllTimers = () => {
       timeoutsRef.current.forEach((t) => clearTimeout(t));

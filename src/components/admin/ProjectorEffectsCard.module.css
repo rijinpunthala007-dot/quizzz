@@ -1,0 +1,495 @@
+/* ProjectorEffectsCard scoped styles with prefix pfx- */
+
+.pfxCard {
+  background-color: #111b2e;
+  border: 1px solid #243049;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.pfxHeaderBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background-color: rgba(255, 255, 255, 0.02);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.pfxHeaderBtn:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.pfxHeaderBtn:focus-visible {
+  outline: 2px solid #f2c94c;
+  outline-offset: -2px;
+}
+
+.pfxHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pfxChevron {
+  color: #f2c94c;
+  font-size: 12px;
+  transition: transform 0.2s ease;
+  user-select: none;
+}
+
+.pfxTitleBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.pfxTitle {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #f4ecd8;
+  letter-spacing: 0.025em;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.pfxSubtitle {
+  font-size: 0.75rem;
+  color: #9aa7bd;
+  margin-top: 2px;
+}
+
+.pfxHeaderBadge {
+  font-size: 0.75rem;
+  color: #f2c94c;
+  background-color: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(242, 201, 76, 0.25);
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pfxBody {
+  padding: 20px;
+  border-top: 1px solid #243049;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* URL Override Yellow Warning Note */
+.pfxUrlWarning {
+  background-color: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fde68a;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pfxUrlWarningIcon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* Section Group */
+.pfxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pfxGroupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.pfxLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #9aa7bd;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Segmented Control */
+.pfxSegmentedControl {
+  display: flex;
+  background-color: rgba(0, 0, 0, 0.35);
+  border: 1px solid #243049;
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+  position: relative;
+}
+
+.pfxSegmentBtn {
+  flex: 1;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #9aa7bd;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.pfxSegmentBtn:hover:not(:disabled) {
+  color: #f4ecd8;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.pfxSegmentBtn:focus-visible {
+  outline: 2px solid #f2c94c;
+  outline-offset: 1px;
+}
+
+.pfxSegmentBtnActive {
+  background-color: #24324f !important;
+  color: #f2c94c !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(242, 201, 76, 0.3);
+}
+
+.pfxSegmentCustomBadge {
+  padding: 8px 14px;
+  border-radius: 8px;
+  background-color: rgba(242, 201, 76, 0.12);
+  border: 1px dashed rgba(242, 201, 76, 0.4);
+  color: #f2c94c;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  cursor: default;
+  user-select: none;
+}
+
+.pfxDescription {
+  font-size: 0.8125rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+  margin: 0;
+  padding: 2px 4px;
+}
+
+/* Switch Row */
+.pfxSwitchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  min-height: 52px;
+  gap: 16px;
+  transition: background-color 0.15s ease;
+}
+
+.pfxSwitchRow:hover {
+  background-color: rgba(0, 0, 0, 0.28);
+}
+
+.pfxSwitchText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pfxSwitchLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #f4ecd8;
+  cursor: pointer;
+}
+
+.pfxSwitchHint {
+  font-size: 0.75rem;
+  color: #9aa7bd;
+  line-height: 1.35;
+}
+
+/* Accessible Toggle Switch */
+.pfxToggleSwitch {
+  width: 50px;
+  height: 28px;
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 9999px;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  padding: 0;
+}
+
+.pfxToggleSwitch:focus-visible {
+  outline: 2px solid #f2c94c;
+  outline-offset: 2px;
+}
+
+.pfxToggleSwitchOn {
+  background-color: #f2c94c;
+  border-color: #f2c94c;
+}
+
+.pfxToggleKnob {
+  width: 22px;
+  height: 22px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pfxToggleSwitchOn .pfxToggleKnob {
+  transform: translateX(22px);
+  background-color: #0f172a;
+}
+
+/* Advanced Section */
+.pfxAdvancedSection {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  background-color: rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.pfxAdvancedBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  min-height: 44px;
+}
+
+.pfxAdvancedBtn:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+  color: #f4ecd8;
+}
+
+.pfxAdvancedBtn:focus-visible {
+  outline: 2px solid #f2c94c;
+  outline-offset: -2px;
+}
+
+.pfxAdvancedBody {
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .pfxAdvancedBody {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pfxMiniToggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  min-height: 44px;
+  gap: 12px;
+}
+
+.pfxMiniLabel {
+  font-size: 0.8125rem;
+  color: #e2e8f0;
+  font-weight: 500;
+}
+
+.pfxMiniToggle {
+  width: 42px;
+  height: 24px;
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 9999px;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  padding: 0;
+}
+
+.pfxMiniToggle:focus-visible {
+  outline: 2px solid #f2c94c;
+  outline-offset: 2px;
+}
+
+.pfxMiniToggleOn {
+  background-color: #f2c94c;
+  border-color: #f2c94c;
+}
+
+.pfxMiniKnob {
+  width: 18px;
+  height: 18px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pfxMiniToggleOn .pfxMiniKnob {
+  transform: translateX(18px);
+  background-color: #0f172a;
+}
+
+/* Footer / Reset Action */
+.pfxFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pfxStatusText {
+  font-size: 0.8125rem;
+  color: #9aa7bd;
+}
+
+.pfxStatusValue {
+  color: #f2c94c;
+  font-weight: 600;
+}
+
+.pfxResetBtn {
+  background-color: transparent;
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pfxResetBtn:hover {
+  background-color: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.6);
+  color: #fbbf24;
+}
+
+.pfxResetBtn:focus-visible {
+  outline: 2px solid #f2c94c;
+  outline-offset: 1px;
+}
+
+.pfxConfirmBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pfxConfirmText {
+  font-size: 0.75rem;
+  color: #fde68a;
+}
+
+.pfxConfirmBtn {
+  background-color: #d97706;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 38px;
+}
+
+.pfxConfirmBtn:hover {
+  background-color: #b45309;
+}
+
+.pfxCancelBtn {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  min-height: 38px;
+}
+
+.pfxCancelBtn:hover {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Mobile Adjustments */
+@media (max-width: 640px) {
+  .pfxBody {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .pfxSegmentedControl {
+    flex-direction: column;
+  }
+
+  .pfxSwitchRow {
+    flex-direction: row;
+  }
+
+  .pfxFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pfxResetBtn {
+    justify-content: center;
+  }
+}

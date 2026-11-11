@@ -1,4 +1,5 @@
-import { memo, useState, useEffect, useRef, useMemo } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
+import { useDisplaySettings } from '../../hooks/useDisplaySettings';
 import styles from './AmbientFX.module.css';
 
 interface AmbientFXProps {
@@ -173,16 +174,8 @@ function DoveSvg() {
  * Strictly background layer (z-index 0, pointer-events none, aria-hidden true).
  */
 const AmbientFX = memo(function AmbientFX({ leaderId, levelId }: AmbientFXProps) {
-  // Read ?fx=off | soft | full from URL (default soft)
-  const fxMode = useMemo(() => {
-    if (typeof window === 'undefined') return 'soft';
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('lite') === '1') return 'off';
-    const val = params.get('fx');
-    if (val === 'off') return 'off';
-    if (val === 'full') return 'full';
-    return 'soft';
-  }, []);
+  const { bgPreset, rays, particles, arches, dove, isLite } = useDisplaySettings();
+  const fxMode = isLite ? 'off' : bgPreset;
 
   // Document visibility to pause animations
   const [isHidden, setIsHidden] = useState(false);
@@ -201,7 +194,7 @@ const AmbientFX = memo(function AmbientFX({ leaderId, levelId }: AmbientFXProps)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (fxMode === 'off') return;
+    if (!dove || isLite) return;
 
     if (!isInitializedRef.current) {
       // First load or refresh: record current leader and level without triggering dove
@@ -227,7 +220,7 @@ const AmbientFX = memo(function AmbientFX({ leaderId, levelId }: AmbientFXProps)
         setShowDove(false);
       }, 5000);
     }
-  }, [leaderId, levelId, fxMode]);
+  }, [leaderId, levelId, dove, isLite]);
 
   useEffect(() => {
     return () => {
@@ -235,13 +228,13 @@ const AmbientFX = memo(function AmbientFX({ leaderId, levelId }: AmbientFXProps)
     };
   }, []);
 
-  // If fx is turned off, render nothing
-  if (fxMode === 'off') {
+  // If in Lite performance mode, render nothing
+  if (isLite) {
     return null;
   }
 
   // Active motes: 18 for soft, 30 for full
-  const activeMotes = fxMode === 'full' ? MOTES_CONFIG : MOTES_CONFIG.slice(0, 18);
+  const activeMotes = bgPreset === 'full' ? MOTES_CONFIG : MOTES_CONFIG.slice(0, 18);
 
   return (
     <div
@@ -252,25 +245,43 @@ const AmbientFX = memo(function AmbientFX({ leaderId, levelId }: AmbientFXProps)
       className={styles.ambientRoot}
     >
       {/* A. Light Rays (Soft & Full) */}
-      <div className={styles.raysLayer} />
+      <div
+        data-testid="ambient-rays"
+        style={{
+          opacity: rays ? 1 : 0,
+          transition: 'opacity 400ms ease-out',
+          pointerEvents: 'none',
+        }}
+      >
+        <div className={styles.raysLayer} />
+      </div>
 
       {/* B. Rising Light Motes (Soft: 18, Full: 30) */}
-      <div className={styles.motesLayer}>
-        {activeMotes.map((mote, idx) => (
-          <div
-            key={idx}
-            className={mote.type === 'gold' ? styles.moteGold : styles.moteIvory}
-            style={
-              {
-                '--fx-x': mote.x,
-                '--fx-size': mote.size,
-                '--fx-duration': mote.duration,
-                '--fx-delay': mote.delay,
-                '--fx-sway': mote.sway,
-              } as React.CSSProperties
-            }
-          />
-        ))}
+      <div
+        data-testid="ambient-motes"
+        style={{
+          opacity: particles ? 1 : 0,
+          transition: 'opacity 400ms ease-out',
+          pointerEvents: 'none',
+        }}
+      >
+        <div className={styles.motesLayer}>
+          {activeMotes.map((mote, idx) => (
+            <div
+              key={idx}
+              className={mote.type === 'gold' ? styles.moteGold : styles.moteIvory}
+              style={
+                {
+                  '--fx-x': mote.x,
+                  '--fx-size': mote.size,
+                  '--fx-duration': mote.duration,
+                  '--fx-delay': mote.delay,
+                  '--fx-sway': mote.sway,
+                } as React.CSSProperties
+              }
+            />
+          ))}
+        </div>
       </div>
 
       {/* D. Dove on New Leader or Level Change (5s flight across top with golden trail) */}
@@ -281,17 +292,22 @@ const AmbientFX = memo(function AmbientFX({ leaderId, levelId }: AmbientFXProps)
         </div>
       )}
 
-      {/* E. Stained-Glass Arches (Full Only) */}
-      {fxMode === 'full' && (
-        <>
-          <div className={styles.archLeft}>
-            <StainedGlassArch />
-          </div>
-          <div className={styles.archRight}>
-            <StainedGlassArch />
-          </div>
-        </>
-      )}
+      {/* E. Stained-Glass Arches (Full Only, with 400ms opacity transition) */}
+      <div
+        data-testid="ambient-arches"
+        style={{
+          opacity: arches ? 1 : 0,
+          transition: 'opacity 400ms ease-out',
+          pointerEvents: 'none',
+        }}
+      >
+        <div data-testid="ambient-arch-left" className={styles.archLeft}>
+          <StainedGlassArch />
+        </div>
+        <div data-testid="ambient-arch-right" className={styles.archRight}>
+          <StainedGlassArch />
+        </div>
+      </div>
     </div>
   );
 });

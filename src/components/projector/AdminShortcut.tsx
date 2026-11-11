@@ -1,15 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useDisplaySettings } from '../../hooks/useDisplaySettings';
 import styles from './AdminShortcut.module.css';
 
 // Keyboard shortcuts list: F for fullscreen, C for celebrate, Shift+A for admin
 
 export default function AdminShortcut() {
-  const isKiosk = typeof window !== 'undefined' && window.location.search.includes('kiosk=1');
-  const isLite = typeof window !== 'undefined' && window.location.search.includes('lite=1');
-  const prefersReduced =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const isInstant = isLite || prefersReduced;
+  const { showAdminShortcut, isLite, isReducedMotion } = useDisplaySettings();
+  const isInstant = isLite || isReducedMotion;
 
   const [isVisible, setIsVisible] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -90,6 +87,7 @@ export default function AdminShortcut() {
   // Keyboard shortcut: Shift + A opens admin
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!showAdminShortcut) return;
       if (e.ctrlKey || e.altKey || e.metaKey) return;
       if (!e.shiftKey) return;
       if (e.key !== 'A' && e.key !== 'a' && e.code !== 'KeyA') return;
@@ -109,7 +107,7 @@ export default function AdminShortcut() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [openAdmin]);
+  }, [openAdmin, showAdminShortcut]);
 
   // Toast auto-dismiss after 4 seconds
   useEffect(() => {
@@ -128,7 +126,7 @@ export default function AdminShortcut() {
     };
   }, []);
 
-  if (isKiosk) {
+  if (!showAdminShortcut) {
     return null;
   }
 

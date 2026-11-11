@@ -4,6 +4,7 @@ import type { QuizState, RankedTeam, CelebrationWording } from '../../types';
 import { DEFAULT_WORDING } from '../../types';
 import { uid, getTeamTotal, rankTeams, createRevealSnapshot, formatScore } from '../../utils';
 import ScoresTable from './ScoresTable';
+import ProjectorEffectsCard from './ProjectorEffectsCard';
 
 export default function AdminView() {
   const { state, setState, setStateImmediate } = useQuizState();
@@ -1212,6 +1213,20 @@ export default function AdminView() {
             </div>
           </div>
         </CollapsibleSection>
+
+        {/* SECTION: PROJECTOR EFFECTS */}
+        <ProjectorEffectsCard
+          display={state.settings?.display}
+          onUpdate={(updater) => {
+            updateStateImmediate((s) => ({
+              ...s,
+              settings: {
+                ...(s.settings || {}),
+                display: updater(s.settings?.display || {}),
+              },
+            }));
+          }}
+        />
 
         {/* SECTION: CELEBRATION WORDING */}
         <CollapsibleSection

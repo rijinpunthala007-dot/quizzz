@@ -55,6 +55,38 @@ export const DEFAULT_WORDING: CelebrationWording = {
   footerText: 'designed and developed by rj',
 };
 
+export interface DisplaySettings {
+  bgPreset?: 'off' | 'soft' | 'full' | 'custom';
+  performanceMode?: boolean; // Lite mode
+  showAdminShortcut?: boolean; // Hidden admin button
+  scoreAnimations?: boolean; // Score animations
+  rays?: boolean;
+  particles?: boolean;
+  halo?: boolean;
+  dove?: boolean;
+  arches?: boolean;
+  candle?: boolean;
+  confetti?: boolean;
+}
+
+export interface QuizSettings {
+  display?: DisplaySettings;
+}
+
+export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
+  bgPreset: 'soft',
+  performanceMode: false,
+  showAdminShortcut: true,
+  scoreAnimations: true,
+  rays: true,
+  particles: true,
+  halo: true,
+  dove: true,
+  arches: false,
+  candle: false,
+  confetti: true,
+};
+
 export interface QuizState {
   title: string;
   focus: 'all' | string; // 'all' or levelId
@@ -68,6 +100,7 @@ export interface QuizState {
   winnersSnapshot?: RevealSnapshotTeam[]; // snapshot taken when winners page opens
   celebrationWording?: CelebrationWording; // Editable celebration wording
   reveal?: RevealState; // Winners Reveal celebration mode
+  settings?: QuizSettings; // Display and other settings
 }
 
 export interface RankedTeam extends Team {
@@ -98,4 +131,7 @@ export const DEFAULT_STATE: QuizState = {
   celebrateWinner: false,
   celebrationWording: DEFAULT_WORDING,
   reveal: DEFAULT_REVEAL,
+  settings: {
+    display: { ...DEFAULT_DISPLAY_SETTINGS },
+  },
 };
