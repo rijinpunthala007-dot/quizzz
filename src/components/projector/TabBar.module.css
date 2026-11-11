@@ -1,0 +1,14 @@
+/* Scoped styles for Projector TabBar */
+
+.tabFadeIn {
+  animation: tabFadeIn 200ms ease-out forwards;
+}
+
+@keyframes tabFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
